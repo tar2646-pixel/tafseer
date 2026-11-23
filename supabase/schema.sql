@@ -94,5 +94,5 @@ create policy scores_delete on public.scores for delete to authenticated using (
 
 -- ---------------- المدير الأول ----------------
 -- غيّر البريد التالي إلى بريدك (بحروف صغيرة)، ثم شغّل الملف.
-insert into public.staff (email, role) values ('your-email@example.com', 'admin')
+insert into public.staff (email, role) values ('t2646@hotmail.com', 'admin')
 on conflict (email) do update set role = 'admin';
