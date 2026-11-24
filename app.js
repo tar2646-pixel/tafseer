@@ -10,7 +10,27 @@ const LS = {
 };
 const shuffle = a => { a = a.slice(); for (let i = a.length - 1; i > 0; i--) { const j = Math.random() * (i + 1) | 0; [a[i], a[j]] = [a[j], a[i]] } return a };
 
-const SUR = {50:'ق',51:'الذاريات',52:'الطور',53:'النجم',54:'القمر',55:'الرحمن',56:'الواقعة',57:'الحديد',58:'المجادلة',59:'الحشر',60:'الممتحنة',61:'الصف',62:'الجمعة',63:'المنافقون',64:'التغابن',65:'الطلاق',66:'التحريم'};
+// أسماء السور بترتيب المصحف (SUR[1] = الفاتحة)
+const SUR = [, 'الفاتحة','البقرة','آل عمران','النساء','المائدة','الأنعام','الأعراف','الأنفال','التوبة','يونس','هود','يوسف','الرعد','إبراهيم','الحجر','النحل','الإسراء','الكهف','مريم','طه','الأنبياء','الحج','المؤمنون','النور','الفرقان','الشعراء','النمل','القصص','العنكبوت','الروم','لقمان','السجدة','الأحزاب','سبأ','فاطر','يس','الصافات','ص','الزمر','غافر','فصلت','الشورى','الزخرف','الدخان','الجاثية','الأحقاف','محمد','الفتح','الحجرات','ق','الذاريات','الطور','النجم','القمر','الرحمن','الواقعة','الحديد','المجادلة','الحشر','الممتحنة','الصف','الجمعة','المنافقون','التغابن','الطلاق','التحريم','الملك','القلم','الحاقة','المعارج','نوح','الجن','المزمل','المدثر','القيامة','الإنسان','المرسلات','النبأ','النازعات','عبس','التكوير','الانفطار','المطففين','الانشقاق','البروج','الطارق','الأعلى','الغاشية','الفجر','البلد','الشمس','الليل','الضحى','الشرح','التين','العلق','القدر','البينة','الزلزلة','العاديات','القارعة','التكاثر','العصر','الهمزة','الفيل','قريش','الماعون','الكوثر','الكافرون','النصر','المسد','الإخلاص','الفلق','الناس'];
+// بداية كل جزء [سورة، آية]
+const JUZ = [, [1,1],[2,142],[2,253],[3,93],[4,24],[4,148],[5,82],[6,111],[7,88],[8,41],[9,93],[11,6],[12,53],[15,1],[17,1],[18,75],[21,1],[23,1],[25,21],[27,56],[29,46],[33,31],[36,28],[39,32],[41,47],[46,1],[51,31],[58,1],[67,1],[78,1]];
+const normAr = t => String(t || '').replace(/[\u064B-\u0652\u0670\u0640]/g, '').replace(/[أإآٱ]/g, 'ا').replace(/ى/g, 'ي').replace(/ة/g, 'ه').replace(/\s+/g, ' ').trim();
+const SUR_IDX = {};
+SUR.forEach((n, i) => { if (i) SUR_IDX[normAr(n)] = i });
+Object.entries({ 'المؤمن': 40, 'حم السجده': 41, 'الدهر': 76, 'عم': 78, 'الانشراح': 94, 'اللهب': 111, 'تبت': 111, 'بني اسرائيل': 17, 'تبارك': 67 }).forEach(([k, v]) => SUR_IDX[normAr(k)] = v);
+// رقم السورة من اسم البنك، مثل «سورة القمر» أو «تفسير سورة ق»
+function surahOf(title){
+  let t = normAr(title).replace(/\(.*?\)/g, '').replace(/[-–—:،,].*$/, '').trim();
+  const m = t.match(/سوره\s+(.+)$/); t = (m ? m[1] : t.replace(/^تفسير\s+/, '')).trim();
+  return SUR_IDX[t] || 0;
+}
+// الأجزاء التي تمتد فيها السورة (أولها جزء بدايتها)
+function juzOfSurah(n){
+  const first = JUZ.reduce((j, st, i) => (i && (st[0] < n || (st[0] === n && st[1] === 1)) ? i : j), 1);
+  const out = [first];
+  for (let j = first + 1; j <= 30 && JUZ[j][0] === n; j++) out.push(j);
+  return out;
+}
 const SCOPES = { qaf:[50,51,52,53,54,55,56,57], muj:[58,59,60,61,62,63,64,65,66] };
 SCOPES.both = SCOPES.qaf.concat(SCOPES.muj);
 const QURAN_URL = n => `https://cdn.jsdelivr.net/npm/quran-json@3.1.2/dist/chapters/${n}.json`;
@@ -152,7 +172,8 @@ function clean(list){
   return out;
 }
 function setBanks(rows){
-  banks = rows.map(x => ({ id: x.id, title: String(x.title || 'بنك'), file: String(x.file || ''), at: x.created_at || '', questions: clean(x.questions) }));
+  banks = rows.map(x => { const title = String(x.title || 'بنك'), sn = surahOf(title); return { id: x.id, title, file: String(x.file || ''), at: x.created_at || '', sn, juz: sn ? juzOfSurah(sn) : [], questions: clean(x.questions) } })
+    .sort((a, b) => (a.sn || 999) - (b.sn || 999) || String(a.at).localeCompare(String(b.at)));
   renderBanks();
 }
 async function loadBanks(){
@@ -169,8 +190,17 @@ async function loadBanks(){
 function renderBanks(){
   const titles = [...new Set(banks.map(b => b.title))];
   const sel = $('#bankSel'), cur = sel.value;
-  sel.innerHTML = '<option value="">كل الملفات</option>' + titles.map(t => `<option value="${esc(t)}">${esc(t)}</option>`).join('');
-  if (titles.includes(cur)) sel.value = cur;
+  // تجميع الملفات حسب الجزء، ثم السور بترتيب المصحف
+  const groups = new Map(), other = [];
+  titles.forEach(t => { const b = banks.find(x => x.title === t); if (!b.sn) { other.push(t); return } const j = b.juz[0]; if (!groups.has(j)) groups.set(j, []); groups.get(j).push(t) });
+  let html = '<option value="">كل الملفات</option>';
+  [...groups.keys()].sort((a, b) => a - b).forEach(j => {
+    const inJuz = titles.filter(t => banks.find(x => x.title === t).juz.includes(j));
+    html += `<optgroup label="الجزء ${j}">` + (inJuz.length > 1 ? `<option value="j:${j}">الجزء ${j} كاملاً</option>` : '') + groups.get(j).map(t => `<option value="t:${esc(t)}">${esc(t)}</option>`).join('') + '</optgroup>';
+  });
+  if (other.length) html += '<optgroup label="ملفات أخرى">' + other.map(t => `<option value="t:${esc(t)}">${esc(t)}</option>`).join('') + '</optgroup>';
+  sel.innerHTML = html;
+  if ([...sel.options].some(o => o.value === cur)) sel.value = cur;
   const n = banks.reduce((s, b) => s + b.questions.length, 0);
   if (sb || banks.length) $('#bankCount').textContent = n ? `${n} سؤالاً في ${titles.length} ملف` : 'لم تُرفع ملفات تفسير بعد.';
   $('#startT').disabled = !n;
@@ -283,8 +313,8 @@ $('#rRename').addEventListener('submit', async e => {
 /* ---------- tafsir quiz ---------- */
 $('#startT').addEventListener('click', () => {
   const name = getName(); msg('');
-  const t = $('#bankSel').value;
-  const pool = banks.filter(b => !t || b.title === t).flatMap(b => b.questions.map(q => ({ ...q, bank: b.title })));
+  const v = $('#bankSel').value, t = v.startsWith('t:') ? v.slice(2) : '', j = v.startsWith('j:') ? +v.slice(2) : 0;
+  const pool = banks.filter(b => !v || (t && b.title === t) || (j && b.juz.includes(j))).flatMap(b => b.questions.map(q => ({ ...q, bank: b.title })));
   if (!pool.length) { msg('لا توجد أسئلة بعد.'); return }
   const qs = shuffle(pool).slice(0, qCount('nT')).map(q => {
     const order = shuffle([0, 1, 2]);
