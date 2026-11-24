@@ -14,6 +14,11 @@ const AUTH_CB = /access_token|refresh_token|error_code|type=recovery/;
 
 let mode = 'login', profile = null, msg = '', msgOk = false, busy = false, ready = !sb;
 let sync = { state: '', at: +LS.get('tq-sync-at') || 0 };
+let results = null, resAll = false;
+const KIND = { t: 'تفسير', h: 'حفظ' };
+const fDT = (() => { try { return new Intl.DateTimeFormat('ar-SA-u-ca-islamic-umalqura-nu-latn', { day: 'numeric', month: 'long', year: 'numeric' }) } catch (e) { return null } })();
+const fG = new Intl.DateTimeFormat('ar-u-ca-gregory-nu-latn', { day: 'numeric', month: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' });
+const jget = (k, d) => { try { return JSON.parse(localStorage.getItem(k)) ?? d } catch (e) { return d } };
 
 /* ---------- رسائل الأخطاء ---------- */
 function errText(e){
@@ -77,12 +82,61 @@ function render(){
      <p style="margin:0">خطة الحفظ: <b>${line('hifz')}</b><br>خطة المراجعة: <b>${line('review')}</b></p>
      <p class="note">${esc(syncTxt)}</p>
      <div class="row"><a class="btn pri" href="#plan" data-goplan="hifz" style="text-decoration:none;display:inline-flex;align-items:center">خطة الحفظ</a><a class="btn" href="#plan" data-goplan="review" style="color:inherit;text-decoration:none;display:inline-flex;align-items:center">خطة المراجعة</a><button class="btn ghost" type="button" data-async>مزامنة الآن</button></div></div>
+   ${resultsHTML()}
    ${role ? `<div class="panel"><h2>صلاحيات ${roleTxt}</h2><p style="margin-top:0">لديك صلاحية ${role === 'admin' ? 'إدارة الموقع كاملاً: بنوك الأسئلة، ومتابعة الأعضاء، وإضافة المشرفين.' : 'إدارة بنوك الأسئلة ومتابعة خطط الأعضاء.'}</p><a class="btn pri" href="#admin" style="text-decoration:none;display:inline-flex;align-items:center">صفحة الإدارة</a></div>` : ''}
    <form class="panel aform" data-a="profile"><h2>الاسم</h2><div><label class="f" for="aName">الاسم الظاهر</label><input type="text" id="aName" name="aName" maxlength="60" value="${esc(profile ? profile.name : '')}" class="inp"></div><button class="btn" type="submit">حفظ الاسم</button></form>
    <form class="panel aform" data-a="changepass"><h2>تغيير كلمة المرور</h2>${pw('aPass', 'new-password', 'كلمة المرور الجديدة')}${pw('aPass2', 'new-password', 'أعد كتابتها')}<button class="btn" type="submit" ${busy ? 'disabled' : ''}>تغيير كلمة المرور</button></form>
    ${note}
    <div class="row"><button class="btn danger" type="button" data-asignout>تسجيل الخروج</button></div>
    ${PERMS}`;
+}
+
+/* ---------- نتائج الاختبارات ---------- */
+function myResults(){
+  const s = T.session; if (!s) return [];
+  const pend = jget('tq-res-pending', []).filter(r => r.user_id === s.user.id).map(r => ({ ...r, pending: true }));
+  return [...pend, ...(results || [])].sort((a, b) => String(b.taken_at).localeCompare(String(a.taken_at)));
+}
+function resTable(list, showAll, more){
+  if (!list.length) return '<div class="empty">لا توجد نتائج بعد. ابدأ اختباراً من الصفحة الرئيسية.</div>';
+  const rows = showAll ? list : list.slice(0, 15);
+  return `<div class="ptable-wrap"><table class="ptable rtab"><thead><tr><th>التاريخ</th><th>الاختبار</th><th>النطاق</th><th>الصحيح</th><th>النقاط</th></tr></thead><tbody>${rows.map(r => { const d = new Date(r.taken_at), pct = Math.round(r.correct / r.total * 100);
+    return `<tr><td>${fDT ? fDT.format(d) : ''}<small>${fG.format(d)}${r.pending ? ' — بانتظار الإرسال' : ''}</small></td><td>${KIND[r.kind] || ''}</td><td>${esc(r.scope || '—')}</td><td class="c"><b>${r.correct}/${r.total}</b><small>${pct}%</small></td><td class="c"><b>${r.points}</b></td></tr>` }).join('')}</tbody></table></div>
+   ${more && !showAll && list.length > 15 ? `<button class="btn ghost" type="button" data-resall style="margin-top:10px">عرض كل النتائج (${list.length})</button>` : ''}`;
+}
+function resultsHTML(){
+  const list = myResults();
+  if (results === null && !list.length) return '<div class="panel"><h2>نتائج اختباراتي</h2><p class="note">جارٍ التحميل…</p></div>';
+  const by = k => list.filter(r => r.kind === k), best = k => by(k).reduce((m, r) => Math.max(m, r.points), 0);
+  const avg = list.length ? Math.round(list.reduce((a, r) => a + r.correct / r.total, 0) / list.length * 100) : 0;
+  return `<div class="panel"><h2>نتائج اختباراتي</h2>
+   ${list.length ? `<div class="psum" style="margin:0 0 12px"><div><b>${list.length}</b>اختباراً</div><div><b>${avg}%</b>متوسط الإجابات الصحيحة</div><div><b>${best('t') || '–'}</b>أفضل نقاط التفسير</div><div><b>${best('h') || '–'}</b>أفضل نقاط الحفظ</div></div>` : ''}
+   ${resTable(list, resAll, true)}</div>`;
+}
+async function loadResults(){
+  const s = T.session; if (!sb || !s) { results = null; return }
+  if (!navigator.onLine) { results = jget('tq-res-cache', []); render(); return }
+  const { data, error } = await sb.from('quiz_results').select('id,kind,scope,correct,total,points,taken_at').eq('user_id', s.user.id).order('taken_at', { ascending: false }).limit(500);
+  results = error ? jget('tq-res-cache', []) : (data || []);
+  if (!error) LS.set('tq-res-cache', JSON.stringify(results));
+  render();
+}
+let flushing = false;
+async function flushResults(){
+  const s = T.session; if (!sb || !s || !navigator.onLine || flushing) return;
+  const pend = jget('tq-res-pending', []), mine = pend.filter(r => r.user_id === s.user.id); if (!mine.length) return;
+  flushing = true;
+  try {
+    const { error } = await sb.from('quiz_results').insert(mine);
+    if (!error) { LS.set('tq-res-pending', JSON.stringify(pend.filter(r => r.user_id !== s.user.id))); await loadResults() }
+  } finally { flushing = false }
+}
+// تُستدعى من app.js عند انتهاء كل اختبار مكتمل
+function saveResult(r){
+  const s = T.session; if (!sb || !s) return;
+  const row = { user_id: s.user.id, kind: r.kind, scope: String(r.scope || '').slice(0, 120), correct: r.correct, total: r.total, points: r.points, taken_at: new Date().toISOString() };
+  const pend = jget('tq-res-pending', []); pend.push(row); LS.set('tq-res-pending', JSON.stringify(pend));
+  flushResults();
 }
 
 /* ---------- الإجراءات ---------- */
@@ -159,7 +213,7 @@ async function loadProfile(){
 }
 
 /* ---------- متابعة الأعضاء (للمدير والمشرف) ---------- */
-let members = null, mFilter = '', mOpen = null;
+let members = null, mFilter = '', mOpen = null, mRes = {};
 async function loadMembers(){
   const el = $('#membersPanel'); if (!el) return;
   if (!T.role || !sb) { el.hidden = true; return }
@@ -178,8 +232,8 @@ function renderMembers(){
    <div class="row" style="margin-bottom:10px"><input type="text" data-mfilter placeholder="ابحث بالاسم أو البريد" value="${esc(mFilter)}" style="max-width:320px"><button class="btn" type="button" data-mreload>تحديث</button></div>
    ${list.length ? `<div class="ptable-wrap"><table class="bk"><thead><tr><th>العضو</th><th>خطة الحفظ</th><th>خطة المراجعة</th><th>آخر مزامنة</th><th></th></tr></thead><tbody>${list.map(m => `
     <tr><td>${esc(m.name || 'بدون اسم')}<br><span class="note" dir="ltr">${esc(m.email || '')}</span></td><td>${cell(m.plans.hifz)}</td><td>${cell(m.plans.review)}</td><td class="note">${m.plans._at ? new Date(m.plans._at).toLocaleDateString('ar-SA-u-ca-gregory-nu-latn') : '—'}</td>
-    <td class="n">${(P().live(m.plans.hifz) || P().live(m.plans.review)) ? `<button class="btn" type="button" data-mview="${esc(m.id)}">${mOpen === m.id ? 'إخفاء' : 'عرض'}</button>` : ''}</td></tr>
-    ${mOpen === m.id ? `<tr><td colspan="5">${P().readOnlyHTML(m.plans.hifz, 'hifz')}${P().readOnlyHTML(m.plans.review, 'review')}</td></tr>` : ''}`).join('')}</tbody></table></div>` : '<div class="empty">لا يوجد أعضاء بعد.</div>'}
+    <td class="n"><button class="btn" type="button" data-mview="${esc(m.id)}">${mOpen === m.id ? 'إخفاء' : 'عرض'}</button></td></tr>
+    ${mOpen === m.id ? `<tr><td colspan="5">${P().readOnlyHTML(m.plans.hifz, 'hifz')}${P().readOnlyHTML(m.plans.review, 'review')}<h3 style="margin:14px 0 8px;font-size:17px">آخر نتائج الاختبارات</h3>${mRes[m.id] ? resTable(mRes[m.id], true, false) : '<p class="note">جارٍ التحميل…</p>'}</td></tr>` : ''}`).join('')}</tbody></table></div>` : '<div class="empty">لا يوجد أعضاء بعد.</div>'}
    <p class="note">العرض للمتابعة فقط؛ لا يستطيع المشرف تعديل خطة العضو.</p>`;
 }
 
@@ -189,9 +243,14 @@ document.addEventListener('click', e => {
   const t = e.target;
   const m = t.closest('[data-amode]'); if (m) { mode = m.dataset.amode; msg = ''; render(); return }
   if (t.closest('[data-asignout]')) { signOut(); return }
-  if (t.closest('[data-async]')) { syncNow(); return }
+  if (t.closest('[data-async]')) { syncNow(); flushResults(); loadResults(); return }
+  if (t.closest('[data-resall]')) { resAll = true; render(); return }
   if (t.closest('[data-mreload]')) { loadMembers(); return }
-  const mv = t.closest('[data-mview]'); if (mv) { mOpen = mOpen === mv.dataset.mview ? null : mv.dataset.mview; renderMembers() }
+  const mv = t.closest('[data-mview]');
+  if (mv) {
+    const id = mv.dataset.mview; mOpen = mOpen === id ? null : id; renderMembers();
+    if (mOpen && !mRes[id]) sb.from('quiz_results').select('kind,scope,correct,total,points,taken_at').eq('user_id', id).order('taken_at', { ascending: false }).limit(10).then(r => { mRes[id] = r.error ? [] : (r.data || []); renderMembers() });
+  }
 });
 document.addEventListener('input', e => { if (e.target.matches('[data-mfilter]')) { mFilter = e.target.value; const pos = e.target.selectionStart; renderMembers(); const i = $('[data-mfilter]'); if (i) { i.focus(); i.setSelectionRange(pos, pos) } } });
 
@@ -212,9 +271,9 @@ function onAuth(ev){
     if (owner && owner !== uid && P()) P().setStore({});
     LS.set('tq-plans-owner', uid);
     if (mode !== 'recovery') mode = 'login';
-    loadProfile(); syncNow();
+    loadProfile(); syncNow(); flushResults(); loadResults();
   } else if (ev === 'SIGNED_OUT') {
-    if (P()) P().setStore({}); LS.set('tq-plans-owner', ''); profile = null; sync = { state: '', at: 0 }; LS.set('tq-sync-at', '');
+    if (P()) P().setStore({}); LS.set('tq-plans-owner', ''); profile = null; results = null; resAll = false; LS.set('tq-res-cache', '[]'); sync = { state: '', at: 0 }; LS.set('tq-sync-at', '');
     if (mode === 'recovery') mode = 'login';
   }
   render();
@@ -222,12 +281,12 @@ function onAuth(ev){
 }
 document.addEventListener('tq:auth', e => onAuth(e.detail.ev));
 document.addEventListener('tq:plans-changed', () => { if (T.session) syncSoon() });
-document.addEventListener('tq:view', e => { if (e.detail === 'account') { if (T.session) loadProfile(); render() } if (e.detail === 'admin') loadMembers() });
-window.addEventListener('online', () => { if (T.session) syncNow(); render() });
+document.addEventListener('tq:view', e => { if (e.detail === 'account') { if (T.session) { loadProfile(); loadResults() } render() } if (e.detail === 'admin') loadMembers() });
+window.addEventListener('online', () => { if (T.session) { syncNow(); flushResults() } render() });
 window.addEventListener('offline', render);
 document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && T.session) syncSoon() });
 
-window.TQAccount = { signOut, syncNow };
+window.TQAccount = { signOut, syncNow, saveResult };
 render();
 // إن كان التحقق من الدخول قد انتهى قبل تحميل هذا الملف
 if (T.authReady) onAuth('INITIAL');

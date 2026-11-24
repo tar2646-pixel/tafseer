@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="theme-color" content="#0f3d3e">
-<meta name="description" content="اختبارات ومراجعة في التفسير وحفظ جزء ق وجزء المجادلة">
+<meta name="description" content="اختبارات ومراجعة في التفسير وحفظ القرآن الكريم، وخطط للحفظ والمراجعة">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -265,10 +265,12 @@ footer a{color:inherit}
     <svg class="corner" viewBox="-50 -50 100 100"><use href="#rub"/></svg>
     <h2>اختبار الحفظ</h2>
     <div>أكمِل الآية التالية، أو حدّد الآية السابقة، أو اسم السورة.</div>
-    <div class="cnt">من سورة ق إلى الحديد، ومن المجادلة إلى التحريم</div>
+    <div class="cnt">جميع أجزاء القرآن الكريم: جزء واحد، أو من جزء إلى جزء، أو من سورة إلى سورة</div>
     <div class="actions">
-     <div><label class="f" for="scopeSel">المقرر</label>
-      <select id="scopeSel"><option value="both">الجزئين معاً</option><option value="qaf">جزء ق (ق – الحديد)</option><option value="muj">جزء المجادلة (المجادلة – التحريم)</option></select></div>
+     <div><label class="f" for="hMode">النطاق</label>
+      <select id="hMode"><option value="juz1">جزء واحد</option><option value="juzr">من جزء إلى جزء</option><option value="all">جميع الأجزاء</option><option value="surr">من سورة إلى سورة</option></select></div>
+     <div id="hFromW"><label class="f" for="hFrom" id="hFromL">الجزء</label><select id="hFrom"></select></div>
+     <div id="hToW" hidden><label class="f" for="hTo">إلى</label><select id="hTo"></select></div>
      <div style="flex:0 1 110px"><label class="f" for="nH">عدد الأسئلة</label><select id="nH"><option value="10">10</option><option value="20">20</option><option value="30" selected>30</option><option value="50">50</option></select></div>
      <button class="btn pri" id="startH">ابدأ الاختبار</button>
     </div>
@@ -404,10 +406,10 @@ footer a{color:inherit}
 </main>
 <footer class="band wrap">نص القرآن الكريم بالرسم العثماني من مشروع quran-json (Tanzil). أسئلة التفسير مستخرجة من ملفات يرفعها المشرفون. · <a href="#account">حسابي ودخول المشرفين</a></footer>
 
-<script src="config.js?v=7"></script>
+<script src="config.js?v=8"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
-<script src="app.js?v=7"></script>
-<script src="plan.js?v=7"></script>
-<script src="account.js?v=7"></script>
+<script src="app.js?v=8"></script>
+<script src="plan.js?v=8"></script>
+<script src="account.js?v=8"></script>
 </body>
 </html>

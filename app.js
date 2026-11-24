@@ -31,8 +31,8 @@ function juzOfSurah(n){
   for (let j = first + 1; j <= 30 && JUZ[j][0] === n; j++) out.push(j);
   return out;
 }
-const SCOPES = { qaf:[50,51,52,53,54,55,56,57], muj:[58,59,60,61,62,63,64,65,66] };
-SCOPES.both = SCOPES.qaf.concat(SCOPES.muj);
+// عدد آيات كل سورة (AYAT[1] = 7)
+const AYAT = [, 7,286,200,176,120,165,206,75,129,109,123,111,43,52,99,128,111,110,98,135,112,78,118,64,77,227,93,88,69,60,34,30,73,54,45,83,182,88,75,85,54,53,89,59,37,35,38,29,18,45,60,49,62,55,78,96,29,22,24,13,14,11,11,18,12,12,30,52,52,44,28,28,20,56,40,31,50,40,46,42,29,19,36,25,22,17,19,26,30,20,15,21,11,8,8,19,5,8,8,11,11,8,3,9,5,4,7,3,6,3,5,4,5,6];
 const QURAN_URL = n => `https://cdn.jsdelivr.net/npm/quran-json@3.1.2/dist/chapters/${n}.json`;
 const QN = 30, QCOUNTS = [10, 20, 30, 50], LETTERS = ['أ','ب','ج'];
 
@@ -216,8 +216,8 @@ function renderBanks(){
 }
 
 /* ---------- quiz engine ---------- */
-function startQuiz(kind, questions, label, name){
-  quiz = { kind, label, name, qs: questions, total: questions.length, i: 0, pts: 0, ok: 0, answers: [], t0: 0, locked: false };
+function startQuiz(kind, questions, label, name, scope = ''){
+  quiz = { kind, label, name, scope, qs: questions, total: questions.length, i: 0, pts: 0, ok: 0, answers: [], t0: 0, locked: false };
   show('quiz'); renderQ();
 }
 function renderQ(){
@@ -291,6 +291,7 @@ async function finish(){
   LS.set('tq-best-' + k, best); $('#rBest').textContent = best;
   const save = $('#rSave'); $('#rRename').hidden = true;
   if (quiz.answers.length < quiz.total) { save.textContent = 'الاختبار لم يكتمل، لذلك لم تُسجّل النتيجة في لوحة الصدارة.'; return }
+  if (window.TQAccount) window.TQAccount.saveResult({ kind: k, scope: quiz.scope || '', correct: quiz.ok, total: quiz.total, points: quiz.pts });
   if (!quiz.name) quiz.name = await guestName();
   LS.set('tq-renameUntil', String(Date.now() + RENAME_MS));
   $('#rName').value = quiz.name; $('#rNameMsg').textContent = 'يمكنك تغيير اسمك خلال 24 ساعة من هذا الاختبار.'; $('#rRename').hidden = false;
@@ -328,7 +329,8 @@ $('#startT').addEventListener('click', () => {
     const order = shuffle([0, 1, 2]);
     return { q: q.q, type: 'تفسير — ' + q.bank, options: order.map(i => q.options[i]), answer: order.indexOf(q.answer), src: q.source };
   });
-  startQuiz('t', qs, 'اختبار التفسير', name);
+  const sel = $('#bankSel'), scopeLbl = sel.value ? sel.options[sel.selectedIndex].textContent : 'كل الملفات';
+  startQuiz('t', qs, 'اختبار التفسير', name, scopeLbl);
 });
 
 /* ---------- hifz quiz ---------- */
@@ -340,22 +342,66 @@ async function loadSurah(n){
   const d = await r.json();
   return surahCache[n] = d.verses.map(v => String(v.text).trim());
 }
-function hifzQuestions(list, n = QN){
-  const all = []; list.forEach(s => surahCache[s].forEach((t, i) => all.push({ s, i: i + 1, t })));
+/* نطاق اختبار الحفظ: يتحول إلى مقاطع [سورة، من آية، إلى آية] بحدود الأجزاء الدقيقة */
+function hifzScope(){
+  const mode = $('#hMode').value, f = +$('#hFrom').value, t = +$('#hTo').value;
+  const segs = [], add = (s1, a1, s2, a2) => { for (let s = s1; s <= s2; s++) segs.push({ s, a1: s === s1 ? a1 : 1, a2: s === s2 ? a2 : AYAT[s] }) };
+  const juzRange = (j1, j2) => { const st = JUZ[j1], en = j2 === 30 ? [114, 6] : (JUZ[j2 + 1][1] > 1 ? [JUZ[j2 + 1][0], JUZ[j2 + 1][1] - 1] : [JUZ[j2 + 1][0] - 1, AYAT[JUZ[j2 + 1][0] - 1]]); add(st[0], st[1], en[0], en[1]) };
+  let label;
+  if (mode === 'all') { add(1, 1, 114, 6); label = 'جميع الأجزاء' }
+  else if (mode === 'juz1') { juzRange(f, f); label = 'الجزء ' + f }
+  else if (mode === 'juzr') { const a = Math.min(f, t), b = Math.max(f, t); juzRange(a, b); label = a === b ? 'الجزء ' + a : `من الجزء ${a} إلى الجزء ${b}` }
+  else { const a = Math.min(f, t), b = Math.max(f, t); add(a, 1, b, AYAT[b]); label = a === b ? 'سورة ' + SUR[a] : `من سورة ${SUR[a]} إلى سورة ${SUR[b]}` }
+  return { segs, label };
+}
+function hifzUI(){
+  const mode = $('#hMode').value, sur = mode === 'surr';
+  const list = sur ? SUR.map((n, i) => [i, i + '. ' + n]).slice(1) : Array.from({ length: 30 }, (_, i) => [i + 1, 'الجزء ' + (i + 1)]);
+  const o = (sel, v) => { sel.innerHTML = list.map(([k, t]) => `<option value="${k}">${esc(t)}</option>`).join(''); sel.value = String(v) };
+  const saved = LS.json('tq-hscope', {});
+  o($('#hFrom'), saved.mode === mode && saved.f ? saved.f : sur ? 67 : 30); o($('#hTo'), saved.mode === mode && saved.t ? saved.t : sur ? 114 : 30);
+  $('#hFromW').hidden = mode === 'all'; $('#hToW').hidden = mode === 'all' || mode === 'juz1';
+  $('#hFromL').textContent = mode === 'juz1' ? 'الجزء' : 'من';
+}
+function saveHScope(){ LS.set('tq-hscope', JSON.stringify({ mode: $('#hMode').value, f: +$('#hFrom').value, t: +$('#hTo').value })) }
+{ const sv = LS.json('tq-hscope', {}); if (sv.mode) $('#hMode').value = sv.mode; hifzUI() }
+$('#hMode').addEventListener('change', () => { hifzUI(); saveHScope() });
+$('#hFrom').addEventListener('change', saveHScope); $('#hTo').addEventListener('change', saveHScope);
+
+// للنطاقات الكبيرة تُحمَّل عيّنة من السور (بحسب عدد آياتها) حتى لا يثقل التحميل
+const MAX_LOAD = 10;
+function pickSurahs(segs){
+  const by = {}; segs.forEach(g => by[g.s] = (by[g.s] || 0) + g.a2 - g.a1 + 1);
+  let ids = Object.keys(by).map(Number);
+  // النطاق الصغير (مثل جزء عمّ) يُحمَّل كاملاً
+  if (ids.length <= MAX_LOAD || ids.reduce((x, k) => x + by[k], 0) <= 800) return ids;
+  const out = [];
+  while (out.length < MAX_LOAD && ids.length) {
+    const tot = ids.reduce((x, k) => x + Math.sqrt(by[k]), 0); let r = Math.random() * tot, k = ids[0];
+    for (const id of ids) { r -= Math.sqrt(by[id]); if (r <= 0) { k = id; break } }
+    out.push(k); ids = ids.filter(x => x !== k);
+  }
+  return out.sort((a, b) => a - b);
+}
+function hifzQuestions(segs, loaded, n = QN){
+  const all = []; segs.filter(g => loaded.includes(g.s)).forEach(g => { for (let i = g.a1; i <= g.a2; i++) { const t = (surahCache[g.s] || [])[i - 1]; if (t) all.push({ s: g.s, i, t }) } });
+  const scopeSur = [...new Set(segs.map(g => g.s))];
+  const nameChoices = s => { const near = scopeSur.length >= 3 ? scopeSur : Array.from({ length: 9 }, (_, k) => s - 4 + k).filter(x => x >= 1 && x <= 114); return near.filter(x => x !== s) };
   const cnt = {}; all.forEach(a => cnt[a.t] = (cnt[a.t] || 0) + 1);
   const used = new Set(), qs = []; let guard = 0;
   const words = t => t.split(/\s+/).length;
-  while (qs.length < n && guard++ < 6000) {
+  while (qs.length < n && guard++ < 8000) {
     const r = Math.random(), type = r < .5 ? 'next' : r < .75 ? 'prev' : 'surah';
     const idx = Math.random() * all.length | 0, a = all[idx];
-    if (cnt[a.t] > 1 || used.has(idx)) continue;
+    if (!a || cnt[a.t] > 1 || used.has(idx)) continue;
     if (type === 'surah') {
       if (words(a.t) < 4) continue;
-      const others = shuffle(list.filter(s => s !== a.s)).slice(0, 2), opts = shuffle([a.s, ...others]);
+      const others = shuffle(nameChoices(a.s)).slice(0, 2); if (others.length < 2) continue;
+      const opts = shuffle([a.s, ...others]);
       qs.push({ type: 'الحفظ — تحديد السورة', q: 'في أي سورة وردت هذه الآية؟', ayah: a.t, options: opts.map(s => 'سورة ' + SUR[s]), answer: opts.indexOf(a.s), src: `سورة ${SUR[a.s]} — الآية ${a.i}:\n﴿${a.t}﴾` });
     } else {
       const b = all[type === 'next' ? idx + 1 : idx - 1];
-      if (!b || b.s !== a.s) continue;
+      if (!b || b.s !== a.s || Math.abs(b.i - a.i) !== 1) continue;
       const same = all.filter(x => x.s === a.s && x.t !== b.t && x.t !== a.t && Math.abs(x.i - a.i) > 1);
       const pool = same.length >= 2 ? same : all.filter(x => x.t !== b.t && x.t !== a.t);
       const L = words(b.t);
@@ -376,15 +422,20 @@ function hifzQuestions(list, n = QN){
   return qs;
 }
 $('#startH').addEventListener('click', async () => {
-  const name = getName();
-  const btn = $('#startH'), list = SCOPES[$('#scopeSel').value];
+  const name = getName(), btn = $('#startH'), { segs, label } = hifzScope(), load = pickSurahs(segs);
   btn.disabled = true; msg('جارٍ تحميل نص السور…');
-  try { await Promise.all(list.map(loadSurah)); msg(''); startQuiz('h', hifzQuestions(list, qCount('nH')), 'اختبار الحفظ', name) }
+  try {
+    await Promise.all(load.map(loadSurah));
+    const qs = hifzQuestions(segs, load, qCount('nH'));
+    if (!qs.length) { msg('النطاق قصير جداً لصنع أسئلة؛ اختر نطاقاً أوسع.'); return }
+    msg(qs.length < qCount('nH') ? `النطاق يكفي ${qs.length} سؤالاً فقط.` : '');
+    startQuiz('h', qs, 'اختبار الحفظ', name, label);
+  }
   catch (e) { msg('تعذّر تحميل نص القرآن. اتصل بالإنترنت مرة واحدة ليُحفظ النص على جهازك.') }
   finally { btn.disabled = false }
 });
 // حفظ نص السور مسبقاً ليعمل اختبار الحفظ دون إنترنت
-function prefetchQuran(){ if (!navigator.onLine) return; SCOPES.both.forEach((n, i) => setTimeout(() => loadSurah(n).catch(() => {}), 1500 + i * 300)) }
+function prefetchQuran(){ if (!navigator.onLine) return; const ids = [...new Set(hifzScope().segs.map(g => g.s))]; if (ids.length <= MAX_LOAD) ids.forEach((n, i) => setTimeout(() => loadSurah(n).catch(() => {}), 1500 + i * 300)) }
 
 /* ---------- admin: auth ---------- */
 async function refreshRole(){
