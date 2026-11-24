@@ -30,10 +30,11 @@ create table if not exists public.scores (
   name        text not null check (char_length(btrim(name)) between 1 and 40),
   kind        text not null check (kind in ('t', 'h')),   -- t = تفسير، h = حفظ
   points      int  not null check (points between 0 and 450),
-  correct     int  not null check (correct between 0 and 30),
-  total       int  not null check (total between 1 and 30),
+  correct     int  not null check (correct between 0 and 50),
+  total       int  not null check (total between 1 and 50),
   created_at  timestamptz not null default now(),
-  check (correct <= total and points <= correct * 15)
+  -- النقاط محوّلة إلى مقياس 30 سؤالاً (أقصى 15 نقطة للسؤال)
+  check (correct <= total and points * total <= correct * 450)
 );
 create index if not exists scores_kind_player on public.scores (kind, player_id);
 
@@ -94,5 +95,5 @@ create policy scores_delete on public.scores for delete to authenticated using (
 
 -- ---------------- المدير الأول ----------------
 -- غيّر البريد التالي إلى بريدك (بحروف صغيرة)، ثم شغّل الملف.
-insert into public.staff (email, role) values ('t2646@hotmail.com', 'admin')
+insert into public.staff (email, role) values ('your-email@example.com', 'admin')
 on conflict (email) do update set role = 'admin';

@@ -14,7 +14,7 @@ const SUR = {50:'ق',51:'الذاريات',52:'الطور',53:'النجم',54:'�
 const SCOPES = { qaf:[50,51,52,53,54,55,56,57], muj:[58,59,60,61,62,63,64,65,66] };
 SCOPES.both = SCOPES.qaf.concat(SCOPES.muj);
 const QURAN_URL = n => `https://cdn.jsdelivr.net/npm/quran-json@3.1.2/dist/chapters/${n}.json`;
-const QN = 30, LETTERS = ['أ','ب','ج'];
+const QN = 30, QCOUNTS = [10, 20, 30, 50], LETTERS = ['أ','ب','ج'];
 
 /* ---------- Supabase ---------- */
 const CFG = window.TQ_CONFIG || {};
@@ -190,13 +190,22 @@ async function finish(){
   const save = $('#rSave');
   if (quiz.answers.length < quiz.total) { save.textContent = 'الاختبار لم يكتمل، لذلك لم تُسجّل النتيجة في لوحة الصدارة.'; return }
   if (!sb) { save.textContent = 'سُجّلت النتيجة على جهازك.'; return }
-  const row = { player_id: pid, name: quiz.name, kind: k, points: quiz.pts, correct: quiz.ok, total: quiz.total };
+  // النقاط في لوحة الصدارة تُحوَّل إلى مقياس 30 سؤالاً حتى تتساوى الاختبارات مهما كان عددها
+  const row = { player_id: pid, name: quiz.name, kind: k, points: Math.floor(quiz.pts * QN / quiz.total), correct: quiz.ok, total: quiz.total };
   if (!navigator.onLine) { const p = LS.json('tq-pending', []); p.push(row); LS.set('tq-pending', JSON.stringify(p)); save.textContent = 'أنت غير متصل؛ ستُرسل النتيجة تلقائياً عند عودة الاتصال.'; return }
   save.textContent = 'جارٍ حفظ النتيجة…';
-  try { await sendScore(row); save.textContent = 'سُجّلت النتيجة في لوحة الصدارة.'; loadBoards() }
+  try { await sendScore(row); save.textContent = 'سُجّلت النتيجة في لوحة الصدارة' + (quiz.total !== QN ? ` (${row.points} نقطة بعد تحويلها إلى مقياس ${QN} سؤالاً).` : '.'); loadBoards() }
   catch (e) { const p = LS.json('tq-pending', []); p.push(row); LS.set('tq-pending', JSON.stringify(p)); save.textContent = 'تعذّر الحفظ الآن؛ سنعيد المحاولة تلقائياً.' }
 }
 $('#rAgain').addEventListener('click', () => { const k = quiz.kind; quiz = null; show('home'); (k === 't' ? $('#startT') : $('#startH')).click() });
+
+/* ---------- question count (10/20/30/50) ---------- */
+function qCount(id){ const v = +$('#' + id).value; return QCOUNTS.includes(v) ? v : QN }
+['nT', 'nH'].forEach(id => {
+  const sel = $('#' + id), saved = +LS.get('tq-' + id);
+  if (QCOUNTS.includes(saved)) sel.value = String(saved);
+  sel.addEventListener('change', () => LS.set('tq-' + id, sel.value));
+});
 
 /* ---------- tafsir quiz ---------- */
 $('#startT').addEventListener('click', () => {
@@ -204,7 +213,7 @@ $('#startT').addEventListener('click', () => {
   const t = $('#bankSel').value;
   const pool = banks.filter(b => !t || b.title === t).flatMap(b => b.questions.map(q => ({ ...q, bank: b.title })));
   if (!pool.length) { msg('لا توجد أسئلة بعد.'); return }
-  const qs = shuffle(pool).slice(0, QN).map(q => {
+  const qs = shuffle(pool).slice(0, qCount('nT')).map(q => {
     const order = shuffle([0, 1, 2]);
     return { q: q.q, type: 'تفسير — ' + q.bank, options: order.map(i => q.options[i]), answer: order.indexOf(q.answer), src: q.source };
   });
@@ -220,12 +229,12 @@ async function loadSurah(n){
   const d = await r.json();
   return surahCache[n] = d.verses.map(v => String(v.text).trim());
 }
-function hifzQuestions(list){
+function hifzQuestions(list, n = QN){
   const all = []; list.forEach(s => surahCache[s].forEach((t, i) => all.push({ s, i: i + 1, t })));
   const cnt = {}; all.forEach(a => cnt[a.t] = (cnt[a.t] || 0) + 1);
   const used = new Set(), qs = []; let guard = 0;
   const words = t => t.split(/\s+/).length;
-  while (qs.length < QN && guard++ < 6000) {
+  while (qs.length < n && guard++ < 6000) {
     const r = Math.random(), type = r < .5 ? 'next' : r < .75 ? 'prev' : 'surah';
     const idx = Math.random() * all.length | 0, a = all[idx];
     if (cnt[a.t] > 1 || used.has(idx)) continue;
@@ -259,7 +268,7 @@ $('#startH').addEventListener('click', async () => {
   const name = getName(); if (!name) return;
   const btn = $('#startH'), list = SCOPES[$('#scopeSel').value];
   btn.disabled = true; msg('جارٍ تحميل نص السور…');
-  try { await Promise.all(list.map(loadSurah)); msg(''); startQuiz('h', hifzQuestions(list), 'اختبار الحفظ', name) }
+  try { await Promise.all(list.map(loadSurah)); msg(''); startQuiz('h', hifzQuestions(list, qCount('nH')), 'اختبار الحفظ', name) }
   catch (e) { msg('تعذّر تحميل نص القرآن. اتصل بالإنترنت مرة واحدة ليُحفظ النص على جهازك.') }
   finally { btn.disabled = false }
 });
@@ -441,7 +450,9 @@ $('#gen').addEventListener('click', async () => {
 });
 $('#stop').addEventListener('click', () => { if (abort) abort.stop = true });
 $('#importBtn').addEventListener('click', () => {
-  let arr; try { arr = JSON.parse($('#importTxt').value); if (arr && arr.questions) arr = arr.questions } catch (e) { log('نص JSON غير صالح.'); return }
+  let arr; try { arr = JSON.parse($('#importTxt').value) } catch (e) { log('نص JSON غير صالح.'); return }
+  if (arr && Array.isArray(arr.banks)) { planBackup([{ name: 'نص ملصق', data: arr }]); $('#importTxt').value = ''; log('نسخة احتياطية: راجع القائمة في قسم «بنوك الأسئلة» ثم اضغط «حفظ المحدّد».'); $('#bkPlan').scrollIntoView({ behavior: 'smooth' }); return }
+  if (arr && arr.questions) arr = arr.questions;
   const title = $('#bTitle').value.trim(); if (!title) { log('اكتب اسم البنك أولاً.'); return }
   const got = clean(arr); log(`أضيف ${got.length} سؤالاً إلى المراجعة.`);
   if (got.length) { addPreview(got, title, 'استيراد'); $('#importTxt').value = '' }
@@ -463,6 +474,75 @@ $('#pSave').addEventListener('click', async () => {
   else { log(`حُفظ ${preview.length} سؤالاً في «${title}».`); preview = []; renderPreview(); loadBanks() }
   btn.disabled = false;
 });
+
+/* ---------- admin: backup / bulk restore ---------- */
+const SURAH_SLUGS = { alfatiha: 'الفاتحة', qaf: 'ق', adhariyat: 'الذاريات', attur: 'الطور', annajm: 'النجم', alqamar: 'القمر', arrahman: 'الرحمن', alwaqia: 'الواقعة', alhadid: 'الحديد', almujadila: 'المجادلة', alhashr: 'الحشر', almumtahana: 'الممتحنة', assaff: 'الصف', aljumuah: 'الجمعة', almunafiqun: 'المنافقون', attaghabun: 'التغابن', attalaq: 'الطلاق', attahrim: 'التحريم' };
+function titleFromFile(name){
+  const base = String(name).replace(/\.json$/i, '').trim();
+  const slug = base.toLowerCase().replace(/^tafsir-/, '');
+  return SURAH_SLUGS[slug] ? 'سورة ' + SURAH_SLUGS[slug] : base;
+}
+let bkPlanList = [];
+const bkMsg = t => $('#bkMsg').textContent = t;
+function planBackup(files){
+  const plan = [], bad = [];
+  files.forEach(({ name, data }) => {
+    if (data && Array.isArray(data.banks)) {
+      data.banks.forEach(b => { const q = clean(b && b.questions); if (q.length) plan.push({ title: String(b.title || titleFromFile(name)).trim().slice(0, 120), file: String(b.file || name), questions: q }); else bad.push(name) });
+    } else {
+      const q = clean(data && data.questions ? data.questions : data);
+      if (q.length) plan.push({ title: titleFromFile(name).slice(0, 120), file: name, questions: q }); else bad.push(name);
+    }
+  });
+  const have = new Set(banks.map(b => b.title));
+  bkPlanList = plan.map(p => ({ ...p, on: !have.has(p.title), dup: have.has(p.title) }));
+  renderPlan();
+  bkMsg(plan.length ? `جاهز للحفظ: ${plan.length} بنكاً.` + (bad.length ? ` تعذّرت قراءة: ${bad.join('، ')}` : '') : 'لم أجد أسئلة صالحة في الملفات المختارة.');
+}
+function renderPlan(){
+  $('#bkPlan').hidden = !bkPlanList.length;
+  $('#bkRows').innerHTML = bkPlanList.map((p, i) => `<tr><td><input type="checkbox" data-bk-on="${i}" ${p.on ? 'checked' : ''} aria-label="تحديد"></td><td><input type="text" data-bk-t="${i}" value="${esc(p.title)}" maxlength="120"></td><td class="n">${p.questions.length}</td><td class="note">${p.dup ? 'موجود مسبقاً؛ غير محدّد حتى لا يتكرر' : ''}</td></tr>`).join('');
+}
+$('#bkRows').addEventListener('change', e => {
+  const t = e.target;
+  if (t.dataset.bkOn !== undefined) bkPlanList[+t.dataset.bkOn].on = t.checked;
+  if (t.dataset.bkT !== undefined) bkPlanList[+t.dataset.bkT].title = t.value.trim().slice(0, 120);
+});
+$('#bkUp').addEventListener('click', () => $('#bkFile').click());
+$('#bkFile').addEventListener('change', async () => {
+  const fs = [...$('#bkFile').files]; $('#bkFile').value = ''; if (!fs.length) return;
+  const files = [];
+  for (const f of fs) { try { files.push({ name: f.name, data: JSON.parse(await f.text()) }) } catch (e) { files.push({ name: f.name, data: null }) } }
+  planBackup(files);
+});
+$('#bkCancel').addEventListener('click', () => { bkPlanList = []; renderPlan(); bkMsg('') });
+$('#bkSave').addEventListener('click', async () => {
+  if (!sb) { bkMsg('الموقع غير متصل بقاعدة البيانات.'); return }
+  const sel = bkPlanList.filter(p => p.on && p.title);
+  if (!sel.length) { bkMsg('لم تحدد أي بنك.'); return }
+  const btn = $('#bkSave'); btn.disabled = true;
+  let ok = 0, nq = 0; const fail = [];
+  for (const [k, p] of sel.entries()) {
+    bkMsg(`جارٍ الحفظ ${k + 1} من ${sel.length}: «${p.title}»…`);
+    const rows = []; for (let i = 0; i < p.questions.length; i += 100) rows.push({ title: p.title, file: p.file, questions: p.questions.slice(i, i + 100) });
+    const { error } = await sb.from('banks').insert(rows);
+    if (error) fail.push(p.title); else { ok++; nq += p.questions.length; p.on = false; p.dup = true }
+  }
+  btn.disabled = false;
+  bkMsg(`حُفظ ${ok} بنكاً (${nq} سؤالاً).` + (fail.length ? ` تعذّر حفظ: ${fail.join('، ')}` : ''));
+  if (!fail.length) { bkPlanList = []; } renderPlan(); loadBanks();
+});
+$('#bkDown').addEventListener('click', () => {
+  if (!banks.length) { bkMsg('لا توجد بنوك لتنزيلها.'); return }
+  const byTitle = new Map();
+  banks.forEach(b => { if (!byTitle.has(b.title)) byTitle.set(b.title, { title: b.title, file: b.file, questions: [] }); byTitle.get(b.title).questions.push(...b.questions) });
+  const out = { type: 'tafseer-backup', version: 1, created: new Date().toISOString(), banks: [...byTitle.values()] };
+  const url = URL.createObjectURL(new Blob([JSON.stringify(out, null, 1)], { type: 'application/json' }));
+  const a = document.createElement('a'); a.href = url; a.download = `tafseer-backup-${new Date().toISOString().slice(0, 10)}.json`;
+  document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(url), 2000);
+  bkMsg(`نُزّلت نسخة فيها ${out.banks.length} بنكاً.`);
+});
+
 $('#resetLb').addEventListener('click', async e => {
   const b = e.currentTarget; if (!sb || role !== 'admin') return;
   if (b.dataset.armed !== '1') { b.dataset.armed = '1'; b.textContent = 'اضغط مرة أخرى للتأكيد'; setTimeout(() => { b.dataset.armed = ''; b.textContent = 'تصفير لوحة الصدارة' }, 4000); return }

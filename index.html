@@ -212,6 +212,7 @@ footer a{color:inherit}
     <div class="cnt" id="bankCount">جارٍ تحميل بنك الأسئلة…</div>
     <div class="actions">
      <div><label class="f" for="bankSel">الملف</label><select id="bankSel"><option value="">كل الملفات</option></select></div>
+     <div style="flex:0 1 110px"><label class="f" for="nT">عدد الأسئلة</label><select id="nT"><option value="10">10</option><option value="20">20</option><option value="30" selected>30</option><option value="50">50</option></select></div>
      <button class="btn pri" id="startT">ابدأ الاختبار</button>
     </div>
    </div>
@@ -223,6 +224,7 @@ footer a{color:inherit}
     <div class="actions">
      <div><label class="f" for="scopeSel">المقرر</label>
       <select id="scopeSel"><option value="both">الجزءان معاً</option><option value="qaf">جزء ق (ق – الحديد)</option><option value="muj">جزء المجادلة (المجادلة – التحريم)</option></select></div>
+     <div style="flex:0 1 110px"><label class="f" for="nH">عدد الأسئلة</label><select id="nH"><option value="10">10</option><option value="20">20</option><option value="30" selected>30</option><option value="50">50</option></select></div>
      <button class="btn pri" id="startH">ابدأ الاختبار</button>
     </div>
    </div>
@@ -302,7 +304,15 @@ footer a{color:inherit}
      <div class="row"><button class="btn danger" id="pDiscard">تجاهل</button><button class="btn gold" id="pSave">حفظ في بنك الأسئلة</button></div></div>
     <div class="plist" id="plist"></div>
    </div>
-   <div class="panel"><h2>بنوك الأسئلة</h2><div id="banksTable"></div></div>
+   <div class="panel"><h2>بنوك الأسئلة</h2>
+    <div class="row" style="margin-bottom:12px"><button class="btn" type="button" id="bkDown">تنزيل نسخة احتياطية</button><button class="btn" type="button" id="bkUp">رفع نسخة احتياطية أو عدة ملفات</button><input type="file" id="bkFile" accept=".json,application/json" multiple hidden></div>
+    <p class="note" style="margin-top:0">اختر ملف النسخة الاحتياطية، أو اختر عدة ملفات أسئلة دفعة واحدة؛ يصير كل بنك أو ملف بنكاً مستقلاً كأنك رفعته وحده.</p>
+    <div id="bkPlan" hidden>
+     <table class="bk"><thead><tr><th></th><th>اسم البنك</th><th>الأسئلة</th><th></th></tr></thead><tbody id="bkRows"></tbody></table>
+     <div class="row" style="margin-top:12px"><button class="btn gold" type="button" id="bkSave">حفظ المحدّد</button><button class="btn" type="button" id="bkCancel">إلغاء</button></div>
+    </div>
+    <p class="note" id="bkMsg"></p>
+    <div id="banksTable"></div></div>
    <div class="panel" id="staffPanel" hidden>
     <h2>المدير والمشرفون</h2>
     <ul class="staff" id="staffList"></ul>

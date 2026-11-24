@@ -1,5 +1,5 @@
 // عامل الخدمة: يجعل الموقع قابلاً للتثبيت ويعمل دون إنترنت (اختبار الحفظ وآخر بنك أسئلة محفوظ)
-const VERSION = 'tq-v1';
+const VERSION = 'tq-v3';
 const SHELL = [
   './', './index.html', './app.js', './config.js', './manifest.webmanifest',
   './icons/icon-192.png', './icons/icon-512.png', './icons/apple-touch-icon.png'
