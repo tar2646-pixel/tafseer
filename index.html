@@ -32,7 +32,7 @@
 --hd-ink:#f3efe2;--hd-head:#fff;--hd-sub:#d5dccf;--gold3:#e9d08a;--star-mid:#123f40;--star-ink:#f3e6bd;--on-gold:#1b1608;--today:light-dark(#fbf5e4,#2a2814);--pat-op:.13;
 --f-head:"Noto Kufi Arabic";--f-body:"IBM Plex Sans Arabic";--r:12px}
 /* الثيم 2: المخطوطة — رقّ دافئ، حبر بني، عنابي وذهب قديم، عناوين Amiri */
-:root[data-skin=makhtuta]{--bg:light-dark(#f7f0e1,#1c1611);--ink:light-dark(#2b1f14,#efe4d0);--mute:light-dark(#6e5d4a,#b9a78e);--deep:#6b1f24;--deep2:#4c1418;--gold:#b8862b;--gold2:light-dark(#8a6420,#d9a94e);--card:light-dark(#fcf7ec,#2a2119);--line:light-dark(#e2d3b5,#47382a);--hd-ink:#f6e9d3;--hd-sub:#ecd8bf;--gold3:#ebc878;--star-mid:#5a1a1f;--star-ink:#f6e3b4;--today:light-dark(#f3e4c4,#3a2a17);--pat-op:.16;--f-head:"Amiri";--r:6px}
+:root[data-skin=makhtuta]{--on-gold:#2a1a04;--bg:light-dark(#f7f0e1,#1c1611);--ink:light-dark(#2b1f14,#efe4d0);--mute:light-dark(#6e5d4a,#b9a78e);--deep:#8f5a12;--deep2:#6e430b;--gold:#e0a83a;--gold2:light-dark(#9a6411,#e8b85a);--card:light-dark(#fcf7ec,#2a2119);--line:light-dark(#e2d3b5,#47382a);--hd-ink:#f6e9d3;--hd-sub:#f3e2c2;--gold3:#f6d488;--star-mid:#7d4e0e;--star-ink:#f6e3b4;--today:light-dark(#f3e4c4,#3a2a17);--pat-op:.08;--f-head:"Amiri";--r:6px}
 :root[data-skin=makhtuta] h1,:root[data-skin=makhtuta] h2,:root[data-skin=makhtuta] h3,:root[data-skin=makhtuta] .brand b{font-weight:700;letter-spacing:0}
 :root[data-skin=makhtuta] .hero h1{font-size:clamp(36px,5.6vw,58px)}
 :root[data-skin=makhtuta] .card{border-width:1px;box-shadow:inset 0 0 0 4px var(--card),inset 0 0 0 5px var(--line)}
@@ -257,7 +257,7 @@ footer .credit{font-family:var(--f-head);color:var(--gold2);font-weight:700;font
   </div>
   <div class="skins" role="group" aria-label="مظهر الموقع"><span>المظهر:</span>
   <button type="button" data-skin="asil"><i style="background:#0f3d3e;border-color:#c8a24a"></i>الأصيل</button>
-  <button type="button" data-skin="makhtuta"><i style="background:#f7f0e1;border-color:#6b1f24"></i>المخطوطة</button>
+  <button type="button" data-skin="makhtuta"><i style="background:#f7f0e1;border-color:#c0821c"></i>المخطوطة</button>
   <button type="button" data-skin="layl"><i style="background:#0c1630;border-color:#5ec4c8"></i>الليل</button>
  </div>
   <div class="hero" id="hero">
@@ -446,7 +446,7 @@ footer .credit{font-family:var(--f-head);color:var(--gold2);font-weight:700;font
  <div class="credit">تصميم طارق الشمري</div>
 </footer>
 <script>
-(function(){var M={asil:"#0f3d3e",makhtuta:"#6b1f24",layl:"#0c1630"};
+(function(){var M={asil:"#0f3d3e",makhtuta:"#8f5a12",layl:"#0c1630"};
 function apply(k){if(!M[k])k="asil";var r=document.documentElement;if(k==="asil")delete r.dataset.skin;else r.dataset.skin=k;
 try{localStorage.setItem("tq-skin",k)}catch(e){}var m=document.querySelector('meta[name=theme-color]');if(m)m.content=M[k];
 document.querySelectorAll(".skins button").forEach(function(b){b.setAttribute("aria-pressed",b.dataset.skin===k)})}
@@ -454,10 +454,10 @@ document.querySelectorAll(".skins button").forEach(function(b){b.onclick=functio
 apply(document.documentElement.dataset.skin||"asil");})();
 </script>
 
-<script src="config.js?v=12"></script>
+<script src="config.js?v=13"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
-<script src="app.js?v=12"></script>
-<script src="plan.js?v=12"></script>
-<script src="account.js?v=12"></script>
+<script src="app.js?v=13"></script>
+<script src="plan.js?v=13"></script>
+<script src="account.js?v=13"></script>
 </body>
 </html>

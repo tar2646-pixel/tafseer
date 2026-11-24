@@ -14,8 +14,12 @@ const esc = (s: unknown) =>
 Deno.serve(async (req) => {
   if (req.method !== "POST") return new Response("method not allowed", { status: 405 });
 
-  const secret = env("HOOK_SECRET");
-  if (!secret || req.headers.get("x-hook-secret") !== secret) return new Response("forbidden", { status: 403 });
+  // سبب الرفض يُكتب بوضوح (دون كشف الكلمة) ليسهل إصلاحه
+  const secret = env("HOOK_SECRET"), got = (req.headers.get("x-hook-secret") ?? "").trim();
+  const no = (why: string) => { console.error(why, "| headers:", [...req.headers.keys()].join(", ")); return new Response(why, { status: 403 }) };
+  if (!secret) return no("forbidden: HOOK_SECRET is not set in Edge Functions > Secrets");
+  if (!got) return no("forbidden: header x-hook-secret is missing in the webhook");
+  if (got !== secret) return no(`forbidden: secret mismatch (webhook ${got.length} chars, HOOK_SECRET ${secret.length} chars)`);
 
   let body: any;
   try { body = await req.json() } catch { return new Response("bad json", { status: 400 }) }
