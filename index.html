@@ -146,6 +146,50 @@ table.bk td.n{text-align:end;white-space:nowrap}
 .banner{background:var(--badbg);color:var(--ink);border-radius:12px;padding:10px 14px;font-size:14px;margin-bottom:14px}
 footer{border-top:1px solid var(--line);color:var(--mute);font-size:14px}
 @media(max-width:700px){.hero{grid-template-columns:minmax(0,1fr)}.star{max-width:150px;order:-1;justify-self:start}.cards,.grid2{grid-template-columns:minmax(0,1fr)}}
+/* plans */
+.chip{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);border-radius:99px;padding:6px 12px;background:var(--bg);min-height:40px;cursor:pointer}
+.chip input{width:18px;height:18px;accent-color:var(--deep)}
+.pdays{gap:8px}
+.psum{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin-top:12px}
+.psum div{background:var(--bg);border:1px solid var(--line);border-radius:12px;padding:10px;text-align:center;font-size:13px;color:var(--mute)}
+.psum b{display:block;font-size:18px;color:var(--ink);font-family:"Noto Kufi Arabic",inherit}
+.ptable-wrap{overflow-x:auto;border:1px solid var(--line);border-radius:14px}
+.ptable{width:100%;border-collapse:collapse;min-width:640px;font-size:14px}
+.ptable th{background:var(--card);color:var(--mute);font-weight:500;text-align:start;padding:10px 8px;white-space:nowrap}
+.ptable td{padding:8px;border-top:1px solid var(--line);vertical-align:middle}
+.ptable td small{display:block;color:var(--mute);font-size:12px}
+.ptable td.c{text-align:center}
+.ptable tr.today td{background:light-dark(#fbf5e4,#2a2814)}
+.ptable tr.done td:not(.c){color:var(--ok)}
+.pchk{width:24px;height:24px;accent-color:var(--ok);cursor:pointer}
+.prate{width:auto;min-height:38px;padding:4px 8px}
+.cnt-btn{min-width:56px;min-height:40px;border-radius:10px;border:1px solid var(--line);background:var(--bg);font-weight:700;font-size:16px;cursor:pointer;color:inherit}
+.cnt-btn small{font-weight:400;color:var(--mute);font-size:11px}
+.cnt-btn.full{border-color:var(--ok);color:var(--ok)}
+.counter-ov{position:fixed;inset:0;z-index:100;background:var(--deep2);color:#fff;display:flex;flex-direction:column;padding:max(12px,env(safe-area-inset-top)) 12px max(12px,env(safe-area-inset-bottom))}
+.counter-ov[hidden]{display:none!important}
+.counter-ov .cbar{display:flex;justify-content:space-between;align-items:center;gap:10px}
+.counter-ov .cbar .btn{background:rgba(255,255,255,.08);border-color:rgba(255,255,255,.25);color:#fff}
+.counter-ov .cbar .btn.danger{color:#ffb4a8}
+.counter-ov #cTitle{font-size:14px;opacity:.85}
+.ctap{flex:1;margin:12px 0;border:2px dashed rgba(200,162,74,.5);border-radius:24px;background:transparent;color:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;cursor:pointer;touch-action:manipulation;-webkit-user-select:none;user-select:none}
+.ctap #cNum{font-size:clamp(96px,32vw,220px);line-height:1;font-weight:700;color:var(--gold);font-variant-numeric:tabular-nums}
+.ctap small{font-size:18px;opacity:.8}
+.ctap em{font-style:normal;font-size:14px;opacity:.6}
+.counter-ov.full .ctap{border-color:#4fc58b}
+.counter-ov.full #cNum{color:#4fc58b}
+@media(max-width:700px){.psum{grid-template-columns:repeat(2,minmax(0,1fr))}.ptable{min-width:0;font-size:12.5px}.ptable th{white-space:normal;font-size:12px}.ptable th,.ptable td{padding:7px 3px}.ptable td small{font-size:10.5px}.cnt-btn{min-width:42px;font-size:14px;padding:0 2px}.cnt-btn small{display:block;line-height:1}.prate{padding:2px;min-height:36px;font-size:14px}.pchk{width:22px;height:22px}}
+/* account */
+.inp{min-height:44px;font-size:16px;padding:8px 12px;border-radius:10px;border:1px solid var(--line);background:var(--bg);width:100%;color:inherit}
+.aform{display:flex;flex-direction:column;gap:12px}
+.aform h2{margin:0}
+.amsg{margin:4px 0 0;padding:10px 14px;border-radius:12px;font-size:15px}
+.amsg.ok{background:var(--okbg);color:var(--ok)}
+.amsg.no{background:var(--badbg);color:var(--bad)}
+.rolebadge{font-size:13px;border-radius:99px;padding:4px 12px;background:var(--bg);border:1px solid var(--line)}
+.rolebadge.admin,.rolebadge.supervisor{background:var(--deep);color:#fff;border-color:var(--deep)}
+table.perm td,table.perm th{text-align:center;font-size:14px}
+table.perm td:first-child{text-align:start}
 @media(prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
 @keyframes rot{to{transform:rotate(45deg)}}
 .star .spin{transform-origin:150px 150px;animation:rot 2.4s ease-out both}
@@ -175,6 +219,7 @@ footer a{color:inherit}
    <nav id="nav">
     <a href="#home" data-v="home">الرئيسية</a>
     <a href="#board" data-v="board">لوحة الصدارة</a>
+    <a href="#account" data-v="account" id="navAccount">حسابي</a>
     <a href="#admin" data-v="admin" id="navAdmin" hidden>الإدارة</a>
    </nav>
   </div>
@@ -229,11 +274,37 @@ footer a{color:inherit}
     </div>
    </div>
   </div>
+  <div class="cards" style="margin-top:16px">
+   <div class="card">
+    <svg class="corner" viewBox="-50 -50 100 100"><use href="#rub"/></svg>
+    <h2>خطة الحفظ</h2>
+    <div>قسّم المصحف أو جزءاً منه على أيامك، وتابع وِردك اليومي بالتكرار والتنفيذ والتقييم.</div>
+    <div class="cnt" id="home-hifz"></div>
+    <div class="actions"><a class="btn pri" href="#plan" data-goplan="hifz" style="text-decoration:none;display:inline-flex;align-items:center;justify-content:center">افتح خطة الحفظ</a></div>
+   </div>
+   <div class="card">
+    <svg class="corner" viewBox="-50 -50 100 100"><use href="#rub"/></svg>
+    <h2>خطة المراجعة</h2>
+    <div>وزّع مراجعة محفوظك على أيام الأسبوع أو الشهر، وسجّل ما أنجزته يوماً بيوم.</div>
+    <div class="cnt" id="home-review"></div>
+    <div class="actions"><a class="btn pri" href="#plan" data-goplan="review" style="text-decoration:none;display:inline-flex;align-items:center;justify-content:center">افتح خطة المراجعة</a></div>
+   </div>
+  </div>
   <p class="note" id="homeMsg" style="margin-top:14px"></p>
   <div style="margin-top:28px" id="homeBoard"></div>
  </section>
 
  <section data-view="board" class="band wrap" hidden><div id="fullBoard"></div></section>
+
+ <section data-view="plan" class="band wrap" hidden><div id="planRoot"></div></section>
+
+ <section data-view="account" class="band wrap" hidden><div id="accountRoot" style="max-width:640px;margin-inline:auto"></div></section>
+
+ <div class="counter-ov" id="counterOv" hidden role="dialog" aria-modal="true" aria-label="عداد التكرار">
+  <div class="cbar"><span id="cTitle"></span><button class="btn" type="button" id="cClose">تصغير ✕</button></div>
+  <button type="button" class="ctap" id="cTap" aria-label="اضغط لزيادة العداد"><span id="cNum">0</span><small id="cTarget"></small><em>اضغط في أي مكان للعدّ</em></button>
+  <div class="cbar"><button class="btn" type="button" id="cMinus">− 1</button><button class="btn danger" type="button" id="cReset">تصفير</button></div>
+ </div>
 
  <section data-view="quiz" class="band" hidden>
   <div class="qwrap">
@@ -266,14 +337,12 @@ footer a{color:inherit}
  <section data-view="admin" class="band wrap" hidden>
   <div id="noBackend" class="empty" hidden>لم يُربط الموقع بقاعدة البيانات بعد. ضع بيانات Supabase في ملف config.js.</div>
 
-  <form id="loginBox" class="panel login" hidden>
+  <div id="loginBox" class="panel login" hidden>
    <h2>دخول المدير والمشرفين</h2>
-   <div><label class="f" for="lEmail">البريد الإلكتروني</label><input type="text" id="lEmail" inputmode="email" autocomplete="username" dir="ltr"></div>
-   <div><label class="f" for="lPass">كلمة المرور</label><input type="password" id="lPass" autocomplete="current-password" dir="ltr" style="min-height:44px;font-size:16px;padding:8px 12px;border-radius:10px;border:1px solid var(--line);background:var(--bg);width:100%"></div>
-   <div class="row"><button class="btn pri" type="submit" id="lIn">دخول</button><button class="btn ghost" type="button" id="lUp">إنشاء حساب مشرف</button></div>
-   <p class="note" id="lMsg"></p>
-   <p class="note">إنشاء الحساب لا يمنح صلاحيات؛ يجب أن يضيف المدير بريدك إلى قائمة المشرفين.</p>
-  </form>
+   <p>سجّل الدخول من صفحة «حسابي»، ثم ارجع إلى هذه الصفحة.</p>
+   <a class="btn pri" href="#account" style="text-decoration:none;display:inline-flex;align-items:center">الذهاب إلى حسابي</a>
+   <p class="note">إنشاء الحساب لا يمنح صلاحيات الإدارة؛ يضيف المدير بريدك إلى قائمة المشرفين.</p>
+  </div>
 
   <div id="adminDenied" class="panel" hidden>
    <h2>لا توجد صلاحية</h2>
@@ -314,6 +383,7 @@ footer a{color:inherit}
     </div>
     <p class="note" id="bkMsg"></p>
     <div id="banksTable"></div></div>
+   <div class="panel" id="membersPanel" hidden></div>
    <div class="panel" id="staffPanel" hidden>
     <h2>المدير والمشرفون</h2>
     <ul class="staff" id="staffList"></ul>
@@ -332,10 +402,12 @@ footer a{color:inherit}
   </div>
  </section>
 </main>
-<footer class="band wrap">نص القرآن الكريم بالرسم العثماني من مشروع quran-json (Tanzil). أسئلة التفسير مستخرجة من ملفات يرفعها المشرفون. · <a href="#admin">دخول المشرفين</a></footer>
+<footer class="band wrap">نص القرآن الكريم بالرسم العثماني من مشروع quran-json (Tanzil). أسئلة التفسير مستخرجة من ملفات يرفعها المشرفون. · <a href="#account">حسابي ودخول المشرفين</a></footer>
 
-<script src="config.js?v=5"></script>
+<script src="config.js?v=7"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
-<script src="app.js?v=5"></script>
+<script src="app.js?v=7"></script>
+<script src="plan.js?v=7"></script>
+<script src="account.js?v=7"></script>
 </body>
 </html>

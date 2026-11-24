@@ -41,6 +41,9 @@ const CFG = window.TQ_CONFIG || {};
 const sb = (CFG.supabaseUrl && CFG.supabaseKey && window.supabase) ? window.supabase.createClient(CFG.supabaseUrl, CFG.supabaseKey) : null;
 let role = null, session = null;
 
+// مشاركة الاتصال مع ملفات الخطة والحساب
+window.TQ = { sb, get session(){ return session }, get role(){ return role }, refreshRole: () => refreshRole(), show: v => show(v) };
+
 /* ---------- player identity (per device) ---------- */
 let pid = LS.get('tq-pid');
 if (!pid) { pid = (crypto.randomUUID ? crypto.randomUUID() : 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => { const r = Math.random()*16|0; return (c === 'x' ? r : (r&3|8)).toString(16) })); LS.set('tq-pid', pid) }
@@ -54,16 +57,21 @@ let mine = { t: null, h: null }, renameOpen = false;
 let banks = [], boards = { t: [], h: [] }, boardTab = 't', boardState = sb ? 'loading' : 'off', quiz = null, preview = [], previewMeta = {}, abort = null;
 
 /* ---------- views ---------- */
-const VIEWS = ['home','board','quiz','result','admin'];
+const VIEWS = ['home','board','quiz','result','admin','plan','account'];
+// رابط عائد من البريد (تأكيد الحساب أو إعادة كلمة المرور): لا نلمس العنوان حتى تقرأه مكتبة Supabase
+const AUTH_CB = /access_token|refresh_token|error_code|type=recovery/;
 function show(v){
+  const cb = AUTH_CB.test(location.hash);
+  if (cb) v = 'account';
   if (!VIEWS.includes(v)) v = 'home';
   if ((v === 'quiz' || v === 'result') && !quiz) v = 'home';
   document.querySelectorAll('[data-view]').forEach(s => s.hidden = s.dataset.view !== v);
   $('#hero').hidden = v !== 'home';
   document.querySelectorAll('#nav a').forEach(a => a.classList.toggle('on', a.dataset.v === v));
-  if (location.hash.slice(1) !== v) history.replaceState(null, '', '#' + v);
+  if (!cb && location.hash.slice(1) !== v) history.replaceState(null, '', '#' + v);
   if (v === 'admin') renderAdmin();
   if (v === 'board' || v === 'home') { renderBoards(); loadBoards() }
+  document.dispatchEvent(new CustomEvent('tq:view', { detail: v }));
   window.scrollTo(0, 0);
 }
 window.addEventListener('hashchange', () => show(location.hash.slice(1)));
@@ -400,26 +408,10 @@ function renderAdmin(){
   renderBanksTable();
   if (role === 'admin') loadStaff();
 }
-$('#loginBox').addEventListener('submit', async e => {
-  e.preventDefault();
-  const email = $('#lEmail').value.trim(), password = $('#lPass').value;
-  if (!email || !password) { $('#lMsg').textContent = 'اكتب البريد وكلمة المرور.'; return }
-  $('#lIn').disabled = true; $('#lMsg').textContent = 'جارٍ الدخول…';
-  const { error } = await sb.auth.signInWithPassword({ email, password });
-  $('#lIn').disabled = false;
-  if (error) { $('#lMsg').textContent = 'تعذّر الدخول: تحقّق من البريد وكلمة المرور، أو من تأكيد البريد.'; return }
-  $('#lPass').value = ''; $('#lMsg').textContent = '';
-  await refreshRole(); renderAdmin();
-});
-$('#lUp').addEventListener('click', async () => {
-  const email = $('#lEmail').value.trim(), password = $('#lPass').value;
-  if (!email || password.length < 8) { $('#lMsg').textContent = 'اكتب البريد وكلمة مرور من 8 أحرف على الأقل.'; return }
-  const { error } = await sb.auth.signUp({ email, password, options: { emailRedirectTo: location.origin + location.pathname + '#admin' } });
-  $('#lMsg').textContent = error ? 'تعذّر إنشاء الحساب: ' + error.message : 'أُنشئ الحساب. افتح رسالة التأكيد في بريدك، ثم اطلب من المدير إضافتك.';
-});
 document.addEventListener('click', async e => {
   if (!e.target.closest('[data-logout]')) return;
-  await sb.auth.signOut(); session = null; role = null; $('#navAdmin').hidden = true; renderAdmin();
+  if (window.TQAccount) await window.TQAccount.signOut(); else await sb.auth.signOut();
+  session = null; role = null; $('#navAdmin').hidden = true; renderAdmin();
 });
 
 /* ---------- admin: staff ---------- */
@@ -672,8 +664,10 @@ if ('serviceWorker' in navigator) window.addEventListener('load', () => navigato
   await loadBanks();
   if (sb) {
     // تأجيل الاستدعاءات خارج دالة الاستماع لتجنّب تعليق مكتبة Supabase
-    sb.auth.onAuthStateChange(ev => { if (ev === 'SIGNED_IN' || ev === 'SIGNED_OUT') setTimeout(async () => { await refreshRole(); if (location.hash === '#admin') renderAdmin() }, 0) });
+    const authEvt = ev => document.dispatchEvent(new CustomEvent('tq:auth', { detail: { ev, session } }));
+    sb.auth.onAuthStateChange(ev => { if (['SIGNED_IN', 'SIGNED_OUT', 'PASSWORD_RECOVERY', 'USER_UPDATED'].includes(ev)) setTimeout(async () => { await refreshRole(); if (location.hash === '#admin') renderAdmin(); authEvt(ev) }, 0) });
     try { await refreshRole() } catch (e) {}
+    window.TQ.authReady = true; authEvt('INITIAL');
     if (location.hash === '#admin') renderAdmin();
     flushPending();
   }
