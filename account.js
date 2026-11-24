@@ -15,6 +15,10 @@ const AUTH_CB = /access_token|refresh_token|error_code|type=recovery/;
 let mode = 'login', profile = null, msg = '', msgOk = false, busy = false, ready = !sb;
 let sync = { state: '', at: +LS.get('tq-sync-at') || 0 };
 let results = null, resAll = false;
+const STATUS = { pending: 'بانتظار الموافقة', approved: 'مقبول', rejected: 'مرفوض' };
+// العضو مقبول؟ المشرفون مقبولون دائماً، وإن لم يُشغَّل migrate-5 فالكل مقبول
+const approved = () => !!T.role || (!!profile && (!profile.status || profile.status === 'approved'));
+const waiting = () => !!profile && !approved();
 const KIND = { t: 'تفسير', h: 'حفظ' };
 const fDT = (() => { try { return new Intl.DateTimeFormat('ar-SA-u-ca-islamic-umalqura-nu-latn', { day: 'numeric', month: 'long', year: 'numeric' }) } catch (e) { return null } })();
 const fG = new Intl.DateTimeFormat('ar-u-ca-gregory-nu-latn', { day: 'numeric', month: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' });
@@ -42,6 +46,7 @@ const PERMS = `<details class="src"><summary>الصلاحيات في الموق�
   <tr><td>الاختبارات ولوحة الصدارة</td><td>✓</td><td>✓</td><td>✓</td><td>✓</td></tr>
   <tr><td>خطة الحفظ والمراجعة على الجهاز</td><td>✓</td><td>✓</td><td>✓</td><td>✓</td></tr>
   <tr><td>حفظ الخطة في الحساب ومزامنتها بين الأجهزة</td><td>–</td><td>✓</td><td>✓</td><td>✓</td></tr>
+  <tr><td>قبول العضويات الجديدة أو رفضها</td><td>–</td><td>–</td><td>✓</td><td>✓</td></tr>
   <tr><td>إدارة بنوك الأسئلة</td><td>–</td><td>–</td><td>✓</td><td>✓</td></tr>
   <tr><td>متابعة خطط الأعضاء (عرض فقط)</td><td>–</td><td>–</td><td>✓</td><td>✓</td></tr>
   <tr><td>إضافة المشرفين وتصفير لوحة الصدارة</td><td>–</td><td>–</td><td>–</td><td>✓</td></tr>
@@ -67,23 +72,26 @@ function render(){
     else if (mode === 'signup') f = `${tabs}<form class="panel aform" data-a="signup"><h2>عضوية جديدة</h2>
       <div><label class="f" for="aName">الاسم</label><input type="text" id="aName" name="aName" maxlength="60" autocomplete="name" class="inp"></div>${em}${pw('aPass', 'new-password', 'كلمة المرور (8 أحرف على الأقل)')}
       <button class="btn pri" type="submit" ${busy ? 'disabled' : ''}>إنشاء العضوية</button>${note}
-      <p class="note">العضوية تحفظ خطتك في حسابك، فتظهر كما وضعتها على أي جهاز تدخل منه.</p></form>`;
+      <p class="note">العضوية تحفظ خطتك ونتائجك في حسابك، فتظهر كما وضعتها على أي جهاز تدخل منه. تُفعَّل العضوية بعد موافقة المشرف.</p></form>`;
     else f = `${tabs}<form class="panel aform" data-a="login"><h2>تسجيل الدخول</h2>${em}${pw('aPass', 'current-password', 'كلمة المرور')}
       <div class="row" style="justify-content:space-between;align-items:center"><button class="btn pri" type="submit" ${busy ? 'disabled' : ''}>دخول</button><button class="btn ghost" type="button" data-amode="forgot">نسيت كلمة المرور؟</button></div>${note}</form>`;
     r.innerHTML = f + PERMS;
     return;
   }
   const role = T.role, roleTxt = ROLE_TXT[role] || 'عضو';
-  const syncTxt = !navigator.onLine ? 'غير متصل — ستُزامن خطتك عند عودة الاتصال.' : sync.state === 'busy' ? 'جارٍ المزامنة…' : sync.state === 'err' ? 'تعذّرت المزامنة الآن؛ سنعيد المحاولة.' : sync.at ? 'آخر مزامنة: ' + new Date(sync.at).toLocaleString('ar-SA-u-ca-gregory-nu-latn', { dateStyle: 'medium', timeStyle: 'short' }) : 'لم تتم مزامنة بعد.';
+  const syncTxt = waiting() ? 'المزامنة تبدأ بعد موافقة المشرف على عضويتك.' : !navigator.onLine ? 'غير متصل — ستُزامن خطتك عند عودة الاتصال.' : sync.state === 'busy' ? 'جارٍ المزامنة…' : sync.state === 'err' ? 'تعذّرت المزامنة الآن؛ سنعيد المحاولة.' : sync.at ? 'آخر مزامنة: ' + new Date(sync.at).toLocaleString('ar-SA-u-ca-gregory-nu-latn', { dateStyle: 'medium', timeStyle: 'short' }) : 'لم تتم مزامنة بعد.';
   const plans = P() ? P().getStore() : {}, line = k => { const sm = P() && P().summary(plans[k]); return sm ? `${sm.done} من ${sm.total} ورداً (${sm.pct}%)` : 'لا توجد خطة' };
   r.innerHTML = `<div class="panel"><div class="row" style="justify-content:space-between;align-items:center"><h2 style="margin:0">مرحباً${profile && profile.name ? '، ' + esc(profile.name) : ''}</h2><span class="rolebadge ${esc(role || 'member')}">${roleTxt}</span></div>
      <p class="note" dir="ltr" style="text-align:end;margin:6px 0 0">${esc(s.user.email)}</p></div>
+   ${!waiting() ? '' : profile.status === 'rejected'
+     ? '<div class="panel pend no"><h2>العضوية غير مقبولة</h2><p style="margin:0">لم يوافق المشرف على هذه العضوية، فلا تُحفظ خطتك ونتائجك في الحساب. ما زالت الاختبارات والخطة متاحة على هذا الجهاز.</p></div>'
+     : '<div class="panel pend"><h2>عضويتك بانتظار موافقة المشرف</h2><p style="margin:0">تستطيع استخدام الموقع كاملاً الآن، وتُحفظ خطتك ونتائجك على هذا الجهاز. بعد الموافقة تُرفع إلى حسابك تلقائياً وتظهر على كل أجهزتك.</p><button class="btn ghost" type="button" data-acheck style="margin-top:10px">تحقّق من الموافقة</button></div>'}
    <div class="panel"><h2>خططي</h2>
      <p style="margin:0">خطة الحفظ: <b>${line('hifz')}</b><br>خطة المراجعة: <b>${line('review')}</b></p>
      <p class="note">${esc(syncTxt)}</p>
      <div class="row"><a class="btn pri" href="#plan" data-goplan="hifz" style="text-decoration:none;display:inline-flex;align-items:center">خطة الحفظ</a><a class="btn" href="#plan" data-goplan="review" style="color:inherit;text-decoration:none;display:inline-flex;align-items:center">خطة المراجعة</a><button class="btn ghost" type="button" data-async>مزامنة الآن</button></div></div>
    ${resultsHTML()}
-   ${role ? `<div class="panel"><h2>صلاحيات ${roleTxt}</h2><p style="margin-top:0">لديك صلاحية ${role === 'admin' ? 'إدارة الموقع كاملاً: بنوك الأسئلة، ومتابعة الأعضاء، وإضافة المشرفين.' : 'إدارة بنوك الأسئلة ومتابعة خطط الأعضاء.'}</p><a class="btn pri" href="#admin" style="text-decoration:none;display:inline-flex;align-items:center">صفحة الإدارة</a></div>` : ''}
+   ${role ? `<div class="panel"><h2>صلاحيات ${roleTxt}</h2><p style="margin-top:0">لديك صلاحية ${role === 'admin' ? 'إدارة الموقع كاملاً: بنوك الأسئلة، وقبول العضويات ومتابعة الأعضاء، وإضافة المشرفين.' : 'إدارة بنوك الأسئلة، وقبول العضويات، ومتابعة خطط الأعضاء.'}</p><a class="btn pri" href="#admin" style="text-decoration:none;display:inline-flex;align-items:center">صفحة الإدارة</a></div>` : ''}
    <form class="panel aform" data-a="profile"><h2>الاسم</h2><div><label class="f" for="aName">الاسم الظاهر</label><input type="text" id="aName" name="aName" maxlength="60" value="${esc(profile ? profile.name : '')}" class="inp"></div><button class="btn" type="submit">حفظ الاسم</button></form>
    <form class="panel aform" data-a="changepass"><h2>تغيير كلمة المرور</h2>${pw('aPass', 'new-password', 'كلمة المرور الجديدة')}${pw('aPass2', 'new-password', 'أعد كتابتها')}<button class="btn" type="submit" ${busy ? 'disabled' : ''}>تغيير كلمة المرور</button></form>
    ${note}
@@ -123,7 +131,7 @@ async function loadResults(){
 }
 let flushing = false;
 async function flushResults(){
-  const s = T.session; if (!sb || !s || !navigator.onLine || flushing) return;
+  const s = T.session; if (!sb || !s || !navigator.onLine || flushing || !approved()) return;
   const pend = jget('tq-res-pending', []), mine = pend.filter(r => r.user_id === s.user.id); if (!mine.length) return;
   flushing = true;
   try {
@@ -157,6 +165,7 @@ async function act(kind, f){
       const { data, error } = await sb.auth.signUp({ email, password: pass, options: { data: { name }, emailRedirectTo: BASE + '#account' } }); if (error) throw error;
       if (data && data.user && Array.isArray(data.user.identities) && !data.user.identities.length) throw { ui: 'هذا البريد مسجّل من قبل. سجّل الدخول، أو استخدم «نسيت كلمة المرور».' };
       if (!data.session) { mode = 'login'; busy = false; say('أُنشئت العضوية. افتح رسالة التأكيد في بريدك ثم سجّل الدخول (تحقّق من مجلد الرسائل غير المرغوبة).', true); return }
+      msg = 'أُنشئت عضويتك، وهي الآن بانتظار موافقة المشرف.'; msgOk = true; busy = false; render(); return;
     } else if (kind === 'forgot') {
       if (!email) throw { ui: 'اكتب بريدك.' };
       const { error } = await sb.auth.resetPasswordForEmail(email, { redirectTo: BASE + '#account' }); if (error) throw error;
@@ -186,7 +195,7 @@ const canon = x => Array.isArray(x) ? '[' + x.map(canon).join(',') + ']' : x && 
 let syncing = false, again = false, timer = null;
 async function syncNow(){
   const s = T.session;
-  if (!sb || !s || !P() || !navigator.onLine) { render(); return }
+  if (!sb || !s || !P() || !navigator.onLine || !approved()) { render(); return }
   if (syncing) { again = true; return }
   syncing = true; sync.state = 'busy'; render();
   try {
@@ -205,8 +214,12 @@ const syncSoon = () => { clearTimeout(timer); timer = setTimeout(syncNow, 1200) 
 
 async function loadProfile(){
   const s = T.session; if (!s) { profile = null; return }
-  const { data } = await sb.from('profiles').select('name,email').eq('id', s.user.id).maybeSingle();
+  const had = !!profile, was = approved();
+  let { data, error } = await sb.from('profiles').select('name,email,status').eq('id', s.user.id).maybeSingle();
+  if (error) ({ data } = await sb.from('profiles').select('name,email').eq('id', s.user.id).maybeSingle());
   profile = data || { name: (s.user.user_metadata && s.user.user_metadata.name) || '' };
+  // قُبلت العضوية الآن: نرفع ما حُفظ على الجهاز
+  if (had && !was && approved()) { syncNow(); flushResults(); loadResults() }
   // الاسم الافتراضي في الاختبارات = اسم العضو
   if (profile.name && !LS.get('tq-name')) { LS.set('tq-name', profile.name); const n = $('#name'); if (n && !n.value) n.value = profile.name }
   render();
@@ -214,24 +227,45 @@ async function loadProfile(){
 
 /* ---------- متابعة الأعضاء (للمدير والمشرف) ---------- */
 let members = null, mFilter = '', mOpen = null, mRes = {};
+// عدد طلبات العضوية بجانب «الإدارة»
+async function badge(){
+  const a = $('#navAdmin'); if (!a || !sb) return;
+  let n = 0;
+  if (T.role) { const { count, error } = await sb.from('profiles').select('id', { count: 'exact', head: true }).eq('status', 'pending'); n = error ? 0 : count || 0 }
+  let b = a.querySelector('.nbadge'); if (!b) { b = document.createElement('span'); b.className = 'nbadge'; a.append(b) }
+  b.textContent = n; b.hidden = !n; b.title = n ? n + ' طلب عضوية بانتظار الموافقة' : '';
+}
+async function setStatus(id, st, btn){
+  if (btn) btn.disabled = true;
+  const { error } = await sb.rpc('set_member_status', { member: id, new_status: st });
+  if (error) { alert('تعذّر الحفظ: ' + (error.message || '') + '\nتأكد من تشغيل ملف migrate-5.sql في Supabase.'); if (btn) btn.disabled = false; return }
+  const m = members && members.find(x => x.id === id); if (m) m.status = st;
+  renderMembers(); badge();
+}
 async function loadMembers(){
   const el = $('#membersPanel'); if (!el) return;
   if (!T.role || !sb) { el.hidden = true; return }
   el.hidden = false; el.innerHTML = '<h2>الأعضاء ومتابعة الخطط</h2><p class="note">جارٍ التحميل…</p>';
-  const [p, pl] = await Promise.all([sb.from('profiles').select('id,name,email,created_at').order('created_at'), sb.from('plans').select('user_id,type,data,updated_at')]);
+  const [p, pl] = await Promise.all([sb.from('profiles').select('id,name,email,created_at,status').order('created_at'), sb.from('plans').select('user_id,type,data,updated_at')]);
   if (p.error || pl.error) { el.innerHTML = '<h2>الأعضاء ومتابعة الخطط</h2><p class="note">تعذّر تحميل الأعضاء. تأكد من تشغيل ملف migrate-3.sql في Supabase.</p>'; return }
   const byU = {}; (pl.data || []).forEach(r => { (byU[r.user_id] = byU[r.user_id] || {})[r.type] = r.data; byU[r.user_id]._at = Math.max(byU[r.user_id]._at || 0, Date.parse(r.updated_at) || 0) });
   members = (p.data || []).map(m => ({ ...m, plans: byU[m.id] || {} }));
-  renderMembers();
+  renderMembers(); badge();
 }
 function renderMembers(){
   const el = $('#membersPanel'); if (!el || !members) return;
   const q = mFilter.trim().toLowerCase(), list = members.filter(m => !q || (m.name || '').toLowerCase().includes(q) || (m.email || '').includes(q));
+  const pend = members.filter(m => m.status === 'pending');
+  const ago = d => { const h = Math.round((Date.now() - Date.parse(d)) / 36e5); return h < 1 ? 'قبل أقل من ساعة' : h < 48 ? 'قبل ' + h + ' ساعة' : 'قبل ' + Math.round(h / 24) + ' يوماً' };
+  const reqs = `<div class="reqs"><h3>طلبات العضوية ${pend.length ? `<span class="nbadge">${pend.length}</span>` : ''}</h3>${pend.length ? `<ul>${pend.map(m => `<li><div><b>${esc(m.name || 'بدون اسم')}</b><br><span class="note" dir="ltr">${esc(m.email || '')}</span> <span class="note">· ${ago(m.created_at)}</span></div>
+     <div class="row"><button class="btn pri" type="button" data-mset="approved" data-id="${esc(m.id)}">قبول</button><button class="btn danger" type="button" data-mset="rejected" data-id="${esc(m.id)}">رفض</button></div></li>`).join('')}</ul>` : '<p class="note" style="margin:0">لا توجد طلبات جديدة.</p>'}</div>`;
+  const stCell = m => m.status && m.status !== 'approved' ? `<br><span class="st ${esc(m.status)}">${STATUS[m.status] || ''}</span> ${m.status === 'rejected' ? `<button class="linkbtn" type="button" data-mset="approved" data-id="${esc(m.id)}">قبول</button>` : ''}` : m.status === 'approved' && !(T.session && m.id === T.session.user.id) ? ` <button class="linkbtn" type="button" data-mset="rejected" data-id="${esc(m.id)}" data-confirm="1" title="إيقاف العضوية">إيقاف</button>` : '';
   const cell = (pl) => { const sm = P().summary(pl); if (!sm) return '<span class="note">—</span>'; return `<b>${sm.pct}%</b> <span class="note">(${sm.done}/${sm.total}${sm.avg == null ? '' : '، تقييم ' + sm.avg.toFixed(1)})</span>${sm.today ? `<br><span class="note">اليوم: ${sm.todayDone ? '✓ منجز' : 'لم يُنجز بعد'}</span>` : ''}` };
   el.innerHTML = `<h2>الأعضاء ومتابعة الخطط <span class="note">(${members.length})</span></h2>
+   ${reqs}
    <div class="row" style="margin-bottom:10px"><input type="text" data-mfilter placeholder="ابحث بالاسم أو البريد" value="${esc(mFilter)}" style="max-width:320px"><button class="btn" type="button" data-mreload>تحديث</button></div>
    ${list.length ? `<div class="ptable-wrap"><table class="bk"><thead><tr><th>العضو</th><th>خطة الحفظ</th><th>خطة المراجعة</th><th>آخر مزامنة</th><th></th></tr></thead><tbody>${list.map(m => `
-    <tr><td>${esc(m.name || 'بدون اسم')}<br><span class="note" dir="ltr">${esc(m.email || '')}</span></td><td>${cell(m.plans.hifz)}</td><td>${cell(m.plans.review)}</td><td class="note">${m.plans._at ? new Date(m.plans._at).toLocaleDateString('ar-SA-u-ca-gregory-nu-latn') : '—'}</td>
+    <tr><td>${esc(m.name || 'بدون اسم')}<br><span class="note" dir="ltr">${esc(m.email || '')}</span>${stCell(m)}</td><td>${cell(m.plans.hifz)}</td><td>${cell(m.plans.review)}</td><td class="note">${m.plans._at ? new Date(m.plans._at).toLocaleDateString('ar-SA-u-ca-gregory-nu-latn') : '—'}</td>
     <td class="n"><button class="btn" type="button" data-mview="${esc(m.id)}">${mOpen === m.id ? 'إخفاء' : 'عرض'}</button></td></tr>
     ${mOpen === m.id ? `<tr><td colspan="5">${P().readOnlyHTML(m.plans.hifz, 'hifz')}${P().readOnlyHTML(m.plans.review, 'review')}<h3 style="margin:14px 0 8px;font-size:17px">آخر نتائج الاختبارات</h3>${mRes[m.id] ? resTable(mRes[m.id], true, false) : '<p class="note">جارٍ التحميل…</p>'}</td></tr>` : ''}`).join('')}</tbody></table></div>` : '<div class="empty">لا يوجد أعضاء بعد.</div>'}
    <p class="note">العرض للمتابعة فقط؛ لا يستطيع المشرف تعديل خطة العضو.</p>`;
@@ -246,6 +280,9 @@ document.addEventListener('click', e => {
   if (t.closest('[data-async]')) { syncNow(); flushResults(); loadResults(); return }
   if (t.closest('[data-resall]')) { resAll = true; render(); return }
   if (t.closest('[data-mreload]')) { loadMembers(); return }
+  if (t.closest('[data-acheck]')) { loadProfile(); return }
+  const ms = t.closest('[data-mset]');
+  if (ms) { if (ms.dataset.confirm && !confirm('إيقاف هذه العضوية؟ لن تُحفظ خطط العضو ونتائجه في حسابه حتى تقبله من جديد.')) return; setStatus(ms.dataset.id, ms.dataset.mset, ms); return }
   const mv = t.closest('[data-mview]');
   if (mv) {
     const id = mv.dataset.mview; mOpen = mOpen === id ? null : id; renderMembers();
@@ -271,18 +308,21 @@ function onAuth(ev){
     if (owner && owner !== uid && P()) P().setStore({});
     LS.set('tq-plans-owner', uid);
     if (mode !== 'recovery') mode = 'login';
-    loadProfile(); syncNow(); flushResults(); loadResults();
+    loadProfile().then(() => { syncNow(); flushResults() }); loadResults();
   } else if (ev === 'SIGNED_OUT') {
-    if (P()) P().setStore({}); LS.set('tq-plans-owner', ''); profile = null; results = null; resAll = false; LS.set('tq-res-cache', '[]'); sync = { state: '', at: 0 }; LS.set('tq-sync-at', '');
+    // العضو المنتظر لم تُرفع خطته بعد، فنُبقيها على الجهاز حتى يعود ويُقبل
+    if (!waiting()) { if (P()) P().setStore({}); LS.set('tq-plans-owner', '') } profile = null; results = null; resAll = false; LS.set('tq-res-cache', '[]'); sync = { state: '', at: 0 }; LS.set('tq-sync-at', '');
     if (mode === 'recovery') mode = 'login';
   }
-  render();
+  render(); badge();
   if (location.hash === '#admin') loadMembers();
 }
 document.addEventListener('tq:auth', e => onAuth(e.detail.ev));
 document.addEventListener('tq:plans-changed', () => { if (T.session) syncSoon() });
-document.addEventListener('tq:view', e => { if (e.detail === 'account') { if (T.session) { loadProfile(); loadResults() } render() } if (e.detail === 'admin') loadMembers() });
+document.addEventListener('tq:view', e => { badge(); if (e.detail === 'account') { if (T.session) { loadProfile(); loadResults() } render() } if (e.detail === 'admin') loadMembers() });
 window.addEventListener('online', () => { if (T.session) { syncNow(); flushResults() } render() });
+// العضو المنتظر: نتحقق من الموافقة عند العودة للموقع
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && T.session && waiting()) loadProfile() });
 window.addEventListener('offline', render);
 document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && T.session) syncSoon() });
 

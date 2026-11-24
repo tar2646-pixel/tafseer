@@ -1,7 +1,7 @@
 // عامل الخدمة: يجعل الموقع قابلاً للتثبيت ويعمل دون إنترنت (اختبار الحفظ وآخر بنك أسئلة محفوظ)
-const VERSION = 'tq-v11';
+const VERSION = 'tq-v12';
 const SHELL = [
-  './', './index.html', './app.js?v=11', './plan.js?v=11', './account.js?v=11', './config.js?v=11', './manifest.webmanifest',
+  './', './index.html', './app.js?v=12', './plan.js?v=12', './account.js?v=12', './config.js?v=12', './manifest.webmanifest',
   './icons/icon-192.png', './icons/icon-512.png', './icons/apple-touch-icon.png'
 ];
 const CDN = ['cdn.jsdelivr.net', 'cdnjs.cloudflare.com', 'fonts.googleapis.com', 'fonts.gstatic.com'];

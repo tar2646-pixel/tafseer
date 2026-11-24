@@ -199,6 +199,18 @@ footer{border-top:1px solid var(--line);color:var(--mute);font-size:14px}
 .amsg{margin:4px 0 0;padding:10px 14px;border-radius:12px;font-size:15px}
 .amsg.ok{background:var(--okbg);color:var(--ok)}
 .amsg.no{background:var(--badbg);color:var(--bad)}
+.nbadge{display:inline-grid;place-items:center;min-width:20px;height:20px;padding:0 6px;margin-inline-start:6px;border-radius:99px;background:#c0392b;color:#fff;font-size:12px;font-weight:700;line-height:1;vertical-align:middle}
+.nbadge[hidden]{display:none}
+.panel.pend{border-color:var(--gold);background:color-mix(in srgb,var(--gold) 10%,var(--card))}
+.panel.pend.no{border-color:var(--bad);background:var(--badbg)}
+.reqs{border:1px solid var(--line);border-radius:var(--r);padding:12px 14px;margin-bottom:14px;background:var(--bg)}
+.reqs h3{margin:0 0 8px;font-size:17px}
+.reqs ul{list-style:none;margin:0;padding:0}
+.reqs li{display:flex;flex-wrap:wrap;gap:8px 14px;justify-content:space-between;align-items:center;padding:10px 0;border-top:1px solid var(--line)}
+.reqs li:first-child{border-top:0}
+.st{display:inline-block;white-space:nowrap;margin-top:4px;font-size:12px;border-radius:99px;padding:1px 8px;background:var(--today);border:1px solid var(--gold)}
+.st.rejected{background:var(--badbg);border-color:var(--bad);color:var(--bad)}
+.linkbtn{background:none;border:0;padding:2px 4px;color:var(--gold2);text-decoration:underline;cursor:pointer;font:inherit;font-size:13px}
 .rolebadge{font-size:13px;border-radius:99px;padding:4px 12px;background:var(--bg);border:1px solid var(--line)}
 .rolebadge.admin,.rolebadge.supervisor{background:var(--deep);color:#fff;border-color:var(--deep)}
 table.perm td,table.perm th{text-align:center;font-size:14px}
@@ -442,10 +454,10 @@ document.querySelectorAll(".skins button").forEach(function(b){b.onclick=functio
 apply(document.documentElement.dataset.skin||"asil");})();
 </script>
 
-<script src="config.js?v=11"></script>
+<script src="config.js?v=12"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
-<script src="app.js?v=11"></script>
-<script src="plan.js?v=11"></script>
-<script src="account.js?v=11"></script>
+<script src="app.js?v=12"></script>
+<script src="plan.js?v=12"></script>
+<script src="account.js?v=12"></script>
 </body>
 </html>
