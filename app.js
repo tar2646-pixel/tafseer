@@ -25,6 +25,12 @@ let role = null, session = null;
 let pid = LS.get('tq-pid');
 if (!pid) { pid = (crypto.randomUUID ? crypto.randomUUID() : 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => { const r = Math.random()*16|0; return (c === 'x' ? r : (r&3|8)).toString(16) })); LS.set('tq-pid', pid) }
 
+let ekey = LS.get('tq-key');
+if (!ekey) { ekey = crypto.randomUUID ? crypto.randomUUID() : pid.replace(/./g, c => c === '-' ? c : (Math.random() * 16 | 0).toString(16)); LS.set('tq-key', ekey) }
+const RENAME_MS = 24 * 3600 * 1000;
+const canRename = () => Date.now() < (+LS.get('tq-renameUntil') || 0);
+
+let mine = { t: null, h: null }, renameOpen = false;
 let banks = [], boards = { t: [], h: [] }, boardTab = 't', boardState = sb ? 'loading' : 'off', quiz = null, preview = [], previewMeta = {}, abort = null;
 
 /* ---------- views ---------- */
@@ -47,10 +53,39 @@ const nameIn = $('#name');
 nameIn.value = LS.get('tq-name') || '';
 nameIn.addEventListener('input', () => LS.set('tq-name', nameIn.value.trim()));
 const msg = t => $('#homeMsg').textContent = t;
+if (LS.get('tq-guest')) nameIn.placeholder = LS.get('tq-guest') + ' (يمكنك كتابة اسمك)';
+// يرجع الاسم المكتوب، أو اسم الزائر المحفوظ، أو null ليُعيَّن اسم زائر عند حفظ النتيجة
 function getName(){
   const n = nameIn.value.trim();
-  if (!n) { msg('اكتب اسمك أولاً ليظهر في لوحة الصدارة.'); nameIn.focus(); return null }
-  return n.slice(0, 40);
+  return n ? n.slice(0, 40) : (LS.get('tq-guest') || '');
+}
+// اسم افتراضي متسلسل: زائر 1، زائر 2، ...
+async function guestName(){
+  let g = LS.get('tq-guest'); if (g) return g;
+  let n = 0, ok = false;
+  if (sb && navigator.onLine) {
+    try {
+      const { data, error } = await sb.from('scores').select('name').like('name', 'زائر %').limit(10000);
+      if (!error) { ok = true; (data || []).forEach(r => { const m = /^زائر (\d+)$/.exec(r.name || ''); if (m) n = Math.max(n, +m[1]) }) }
+    } catch (e) {}
+  }
+  g = 'زائر ' + (ok ? n + 1 : 1000 + (Math.random() * 9000 | 0));
+  LS.set('tq-guest', g); nameIn.placeholder = g + ' (يمكنك كتابة اسمك)';
+  return g;
+}
+async function renameMe(newName){
+  newName = String(newName || '').trim().slice(0, 40);
+  if (!newName) return 'اكتب اسماً.';
+  if (!canRename()) return 'انتهت مدة تعديل الاسم (24 ساعة من آخر اختبار).';
+  const p = LS.json('tq-pending', []); p.forEach(r => { if (r.player_id === pid) r.name = newName }); LS.set('tq-pending', JSON.stringify(p));
+  LS.set('tq-name', newName); nameIn.value = newName;
+  if (sb) {
+    if (!navigator.onLine) return 'أنت غير متصل؛ سيُستخدم الاسم الجديد في نتائجك القادمة.';
+    const { error } = await sb.rpc('rename_player', { p_player: pid, p_key: ekey, p_name: newName });
+    if (error) return 'تعذّر تعديل الاسم في لوحة الصدارة الآن.';
+    loadBoards();
+  }
+  return 'ok';
 }
 
 /* ---------- leaderboard ---------- */
@@ -60,22 +95,50 @@ async function loadBoards(){
     const res = await Promise.all(['t','h'].map(k => sb.from('leaderboard').select('player_id,name,best,plays').eq('kind', k).order('best', { ascending: false }).limit(10)));
     res.forEach((r, i) => { if (r.error) throw r.error; boards[i ? 'h' : 't'] = r.data || [] });
     boardState = 'ok';
+    await Promise.all(['t','h'].map(async k => {
+      const me = await sb.from('leaderboard').select('name,best,plays').eq('kind', k).eq('player_id', pid).maybeSingle();
+      if (me.error || !me.data) { mine[k] = null; return }
+      const [above, all] = await Promise.all([
+        sb.from('leaderboard').select('player_id', { count: 'exact', head: true }).eq('kind', k).gt('best', me.data.best),
+        sb.from('leaderboard').select('player_id', { count: 'exact', head: true }).eq('kind', k)
+      ]);
+      mine[k] = { ...me.data, rank: (above.count || 0) + 1, of: all.count || 0 };
+    }));
   } catch (e) { boardState = boards.t.length || boards.h.length ? 'ok' : 'err' }
   renderBoards();
 }
 function boardHTML(title){
   const rows = boards[boardTab] || [];
-  let body;
+  let body = '';
   if (boardState === 'off') body = '<div class="empty">لوحة الصدارة غير مفعّلة بعد.</div>';
   else if (boardState === 'loading') body = '<div class="empty">جارٍ تحميل القائمة…</div>';
   else if (boardState === 'err' && !rows.length) body = '<div class="empty">تعذّر تحميل القائمة الآن.</div>';
   else if (!rows.length) body = '<div class="empty">لا توجد نتائج بعد. كن أول المشاركين!</div>';
   else body = '<ol class="lb">' + rows.map((d, i) => `<li class="${d.player_id === pid ? 'me' : ''}"><span class="rk ${i < 3 ? 'g' + (i + 1) : ''}">${i + 1}</span><span class="nm">${esc(d.name || 'مشارك')}<small>${+d.plays || 1} محاولة</small></span><span class="pt">${+d.best || 0}</span></li>`).join('') + '</ol>';
+  const m = mine[boardTab];
+  if (boardState === 'ok') {
+    const ren = canRename() ? (renameOpen
+      ? `<form class="row" data-renform style="margin-top:8px"><input type="text" name="nm" maxlength="40" value="${esc(m ? m.name : (LS.get('tq-name') || ''))}" style="max-width:240px"><button class="btn" type="submit">حفظ</button><button class="btn ghost" type="button" data-rencancel>إلغاء</button><span class="note" data-renmsg></span></form>`
+      : ` · <button class="btn ghost" type="button" data-renopen style="padding:4px 10px">تغيير اسمك</button>`) : '';
+    body += m
+      ? `<div class="mine note" style="margin-top:12px">نقاطك: <b>${+m.best || 0}</b> — ترتيبك: <b>${m.rank}</b> من ${m.of} — باسم «${esc(m.name)}»${ren}</div>`
+      : `<div class="mine note" style="margin-top:12px">لم تُسجَّل لك نتيجة في هذا الاختبار بعد.${ren}</div>`;
+  }
   return `<div class="boardhead"><div><h2 style="font-size:24px">${title}</h2><div class="note">أعلى عشرة مشاركين نقاطاً — تُحتسب أفضل نتيجة لكل مشارك</div></div>
   <div class="tabs" role="tablist"><button data-tab="t" class="${boardTab === 't' ? 'on' : ''}">التفسير</button><button data-tab="h" class="${boardTab === 'h' ? 'on' : ''}">الحفظ</button></div></div>${body}`;
 }
 function renderBoards(){ $('#homeBoard').innerHTML = boardHTML('العشرة الأوائل'); $('#fullBoard').innerHTML = boardHTML('لوحة الصدارة') }
-document.addEventListener('click', e => { const b = e.target.closest('[data-tab]'); if (b) { boardTab = b.dataset.tab; renderBoards() } });
+document.addEventListener('click', e => {
+  const b = e.target.closest('[data-tab]'); if (b) { boardTab = b.dataset.tab; renderBoards() }
+  if (e.target.closest('[data-renopen]')) { renameOpen = true; renderBoards(); const i = document.querySelector('[data-renform] input'); if (i) i.focus() }
+  if (e.target.closest('[data-rencancel]')) { renameOpen = false; renderBoards() }
+});
+document.addEventListener('submit', async e => {
+  const f = e.target.closest('[data-renform]'); if (!f) return; e.preventDefault();
+  const out = f.querySelector('[data-renmsg]'); out.textContent = 'جارٍ الحفظ…';
+  const r = await renameMe(f.elements.nm.value);
+  if (r === 'ok') { renameOpen = false; renderBoards() } else out.textContent = r;
+});
 
 /* ---------- banks ---------- */
 function clean(list){
@@ -165,7 +228,8 @@ document.addEventListener('keydown', e => {
 
 /* ---------- scores (with offline queue) ---------- */
 async function sendScore(row){
-  const { error } = await sb.from('scores').insert(row);
+  let { error } = await sb.from('scores').insert(row);
+  if (error && row.edit_key && /edit_key/.test(error.message || '')) { const { edit_key, ...r } = row; ({ error } = await sb.from('scores').insert(r)) }
   if (error) throw error;
 }
 async function flushPending(){
@@ -187,11 +251,14 @@ async function finish(){
     : '<p class="note">أحسنت! لا أخطاء في هذا الاختبار.</p>';
   const best = Math.max(+LS.get('tq-best-' + k) || 0, quiz.pts);
   LS.set('tq-best-' + k, best); $('#rBest').textContent = best;
-  const save = $('#rSave');
+  const save = $('#rSave'); $('#rRename').hidden = true;
   if (quiz.answers.length < quiz.total) { save.textContent = 'الاختبار لم يكتمل، لذلك لم تُسجّل النتيجة في لوحة الصدارة.'; return }
+  if (!quiz.name) quiz.name = await guestName();
+  LS.set('tq-renameUntil', String(Date.now() + RENAME_MS));
+  $('#rName').value = quiz.name; $('#rNameMsg').textContent = 'يمكنك تغيير اسمك خلال 24 ساعة من هذا الاختبار.'; $('#rRename').hidden = false;
   if (!sb) { save.textContent = 'سُجّلت النتيجة على جهازك.'; return }
   // النقاط في لوحة الصدارة تُحوَّل إلى مقياس 30 سؤالاً حتى تتساوى الاختبارات مهما كان عددها
-  const row = { player_id: pid, name: quiz.name, kind: k, points: Math.floor(quiz.pts * QN / quiz.total), correct: quiz.ok, total: quiz.total };
+  const row = { player_id: pid, edit_key: ekey, name: quiz.name, kind: k, points: Math.floor(quiz.pts * QN / quiz.total), correct: quiz.ok, total: quiz.total };
   if (!navigator.onLine) { const p = LS.json('tq-pending', []); p.push(row); LS.set('tq-pending', JSON.stringify(p)); save.textContent = 'أنت غير متصل؛ ستُرسل النتيجة تلقائياً عند عودة الاتصال.'; return }
   save.textContent = 'جارٍ حفظ النتيجة…';
   try { await sendScore(row); save.textContent = 'سُجّلت النتيجة في لوحة الصدارة' + (quiz.total !== QN ? ` (${row.points} نقطة بعد تحويلها إلى مقياس ${QN} سؤالاً).` : '.'); loadBoards() }
@@ -207,9 +274,15 @@ function qCount(id){ const v = +$('#' + id).value; return QCOUNTS.includes(v) ? 
   sel.addEventListener('change', () => LS.set('tq-' + id, sel.value));
 });
 
+$('#rRename').addEventListener('submit', async e => {
+  e.preventDefault(); const out = $('#rNameMsg'); out.textContent = 'جارٍ الحفظ…';
+  const r = await renameMe($('#rName').value);
+  out.textContent = r === 'ok' ? 'تم تغيير اسمك في لوحة الصدارة.' : r;
+});
+
 /* ---------- tafsir quiz ---------- */
 $('#startT').addEventListener('click', () => {
-  const name = getName(); if (!name) return; msg('');
+  const name = getName(); msg('');
   const t = $('#bankSel').value;
   const pool = banks.filter(b => !t || b.title === t).flatMap(b => b.questions.map(q => ({ ...q, bank: b.title })));
   if (!pool.length) { msg('لا توجد أسئلة بعد.'); return }
@@ -265,7 +338,7 @@ function hifzQuestions(list, n = QN){
   return qs;
 }
 $('#startH').addEventListener('click', async () => {
-  const name = getName(); if (!name) return;
+  const name = getName();
   const btn = $('#startH'), list = SCOPES[$('#scopeSel').value];
   btn.disabled = true; msg('جارٍ تحميل نص السور…');
   try { await Promise.all(list.map(loadSurah)); msg(''); startQuiz('h', hifzQuestions(list, qCount('nH')), 'اختبار الحفظ', name) }

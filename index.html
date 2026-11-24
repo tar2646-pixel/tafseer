@@ -181,9 +181,9 @@ footer a{color:inherit}
   <div class="hero" id="hero">
    <div>
     <h1>راجع التفسير واختبر حفظك</h1>
-    <p>ثلاثون سؤالاً في كل اختبار، ثلاثة خيارات لكل سؤال، ومع كل سؤال مصدر المعلومة كاملاً. اجمع النقاط ونافس على قائمة العشرة الأوائل.</p>
+    <p>من 10 إلى 50 سؤالاً في كل اختبار حسب اختيارك، ثلاثة خيارات لكل سؤال، ومع كل سؤال مصدر المعلومة كاملاً. اجمع النقاط ونافس على قائمة العشرة الأوائل.</p>
     <label class="f" for="name" style="color:#d5dccf">اسمك في المسابقة</label>
-    <div class="namebox"><input type="text" id="name" maxlength="40" placeholder="اكتب اسمك" autocomplete="nickname"></div>
+    <div class="namebox"><input type="text" id="name" maxlength="40" placeholder="اكتب اسمك (اختياري)" autocomplete="nickname"></div>
     <div class="install"><button class="btn" id="installBtn" hidden>ثبّت التطبيق على جهازك</button><span class="who" id="iosHint" hidden>للتثبيت على آيفون: زر المشاركة ← «إضافة إلى الشاشة الرئيسية»</span></div>
    </div>
    <svg class="star" viewBox="0 0 300 300" aria-hidden="true">
@@ -257,6 +257,7 @@ footer a{color:inherit}
    <div class="note">نقطة</div>
    <div class="stats"><div><b id="rOk">0</b>إجابة صحيحة</div><div><b id="rOf">0</b>عدد الأسئلة</div><div><b id="rBest">–</b>أفضل نتيجة لك</div></div>
    <p class="note" id="rSave"></p>
+   <form class="rename" id="rRename" hidden><label class="f" for="rName">اسمك في لوحة الصدارة</label><div class="row" style="justify-content:center"><input type="text" id="rName" maxlength="40" style="max-width:260px"><button class="btn" type="submit">حفظ الاسم</button></div><p class="note" id="rNameMsg"></p></form>
    <div class="row" style="justify-content:center"><button class="btn pri" id="rAgain">اختبار جديد</button><a class="btn" href="#board" style="text-decoration:none;display:inline-flex;align-items:center">لوحة الصدارة</a><a class="btn ghost" href="#home" style="text-decoration:none;display:inline-flex;align-items:center">الرئيسية</a></div>
    <div class="review" id="rReview"></div>
   </div>
@@ -333,8 +334,8 @@ footer a{color:inherit}
 </main>
 <footer class="band wrap">نص القرآن الكريم بالرسم العثماني من مشروع quran-json (Tanzil). أسئلة التفسير مستخرجة من ملفات يرفعها المشرفون. · <a href="#admin">دخول المشرفين</a></footer>
 
-<script src="config.js"></script>
+<script src="config.js?v=4"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
-<script src="app.js"></script>
+<script src="app.js?v=4"></script>
 </body>
 </html>

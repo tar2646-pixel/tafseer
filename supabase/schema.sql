@@ -33,6 +33,7 @@ create table if not exists public.scores (
   correct     int  not null check (correct between 0 and 50),
   total       int  not null check (total between 1 and 50),
   created_at  timestamptz not null default now(),
+  edit_key    uuid,   -- مفتاح سري للجهاز لتعديل الاسم، لا يُقرأ
   -- النقاط محوّلة إلى مقياس 30 سؤالاً (أقصى 15 نقطة للسؤال)
   check (correct <= total and points * total <= correct * 450)
 );
@@ -66,7 +67,8 @@ alter table public.staff  enable row level security;
 alter table public.banks  enable row level security;
 alter table public.scores enable row level security;
 
-grant select on public.banks, public.scores, public.leaderboard to anon, authenticated;
+grant select on public.banks, public.leaderboard to anon, authenticated;
+grant select (id, player_id, name, kind, points, correct, total, created_at) on public.scores to anon, authenticated;
 grant insert on public.scores to anon, authenticated;
 grant insert, update, delete on public.banks to authenticated;
 grant delete on public.scores to authenticated;
@@ -92,6 +94,27 @@ drop policy if exists scores_delete on public.scores;
 create policy scores_read   on public.scores for select to anon, authenticated using (true);
 create policy scores_insert on public.scores for insert to anon, authenticated with check (true);
 create policy scores_delete on public.scores for delete to authenticated using (public.my_role() = 'admin');
+
+-- تغيير الاسم خلال 24 ساعة
+create or replace function public.rename_player(p_player uuid, p_key uuid, p_name text)
+returns int
+language plpgsql security definer
+set search_path = public
+as $$
+declare n int;
+begin
+  p_name := btrim(coalesce(p_name, ''));
+  if p_key is null or char_length(p_name) not between 1 and 40 then
+    raise exception 'invalid name';
+  end if;
+  update public.scores set name = p_name
+   where player_id = p_player and edit_key = p_key
+     and created_at > now() - interval '24 hours';
+  get diagnostics n = row_count;
+  return n;
+end $$;
+revoke all on function public.rename_player(uuid, uuid, text) from public;
+grant execute on function public.rename_player(uuid, uuid, text) to anon, authenticated;
 
 -- ---------------- المدير الأول ----------------
 -- غيّر البريد التالي إلى بريدك (بحروف صغيرة)، ثم شغّل الملف.
