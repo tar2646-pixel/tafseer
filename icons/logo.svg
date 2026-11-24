@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+<defs><radialGradient id="g" cx=".5" cy=".38" r=".75"><stop offset="0" stop-color="#1a5a58"/><stop offset=".6" stop-color="#0f3d3e"/><stop offset="1" stop-color="#0b2e2f"/></radialGradient><linearGradient id="pg" x1="0" x2="1"><stop offset="0" stop-color="#f6ecd0"/><stop offset=".5" stop-color="#fffaf0"/><stop offset="1" stop-color="#f6ecd0"/></linearGradient></defs>
+<rect width="512" height="512" rx="112" fill="url(#g)"/>
+<g transform="translate(256 256) scale(1) translate(-256 -256)">
+<rect x="130" y="130" width="252" height="252" rx="6" fill="#0b2e2f" fill-opacity=".4" transform="rotate(0 256 256)"/>
+<rect x="130" y="130" width="252" height="252" rx="6" fill="#0b2e2f" fill-opacity=".4" transform="rotate(45 256 256)"/>
+<rect x="130" y="130" width="252" height="252" rx="6" fill="none" stroke="#c8a24a" stroke-width="11" stroke-linejoin="round" transform="rotate(0 256 256)"/>
+<rect x="130" y="130" width="252" height="252" rx="6" fill="none" stroke="#c8a24a" stroke-width="11" stroke-linejoin="round" transform="rotate(45 256 256)"/>
+<circle cx="256" cy="256" r="150" fill="none" stroke="#e9d08a" stroke-width="3" stroke-dasharray="2 9" stroke-linecap="round" opacity=".8"/>
+<g stroke="#c8a24a" stroke-width="17" stroke-linecap="round"><line x1="200" y1="276" x2="306" y2="352"/><line x1="312" y1="276" x2="206" y2="352"/></g>
+<g stroke="#c8a24a" stroke-width="12" stroke-linecap="round"><line x1="190" y1="356" x2="222" y2="356"/><line x1="290" y1="356" x2="322" y2="356"/></g>
+<path d="M256 214 C226 196 186 192 150 200 L150 292 C186 284 226 288 256 306 Z" fill="url(#pg)" stroke="#c8a24a" stroke-width="7" stroke-linejoin="round"/>
+<path d="M256 214 C286 196 326 192 362 200 L362 292 C326 284 286 288 256 306 Z" fill="url(#pg)" stroke="#c8a24a" stroke-width="7" stroke-linejoin="round"/>
+<line x1="256" y1="214" x2="256" y2="306" stroke="#c8a24a" stroke-width="6"/>
+<path d="M170 220 C196 214 222 216 242 224 M342 220 C316 214 290 216 270 224 M170 238 C196 232 222 234 242 242 M342 238 C316 232 290 234 270 242 M170 256 C196 250 222 252 242 260 M342 256 C316 250 290 252 270 260 M170 274 C196 268 222 270 242 278 M342 274 C316 268 290 270 270 278" fill="none" stroke="#0f3d3e" stroke-opacity=".45" stroke-width="4" stroke-linecap="round"/>
+<g transform="translate(256 166)"><rect x="-11" y="-11" width="22" height="22" fill="#e9d08a"/><rect x="-11" y="-11" width="22" height="22" fill="#e9d08a" transform="rotate(45)"/></g>
+</g></svg>

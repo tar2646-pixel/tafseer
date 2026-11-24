@@ -12,6 +12,7 @@
 <title>مراجعة التفسير</title>
 <script>try{var k=localStorage.getItem("tq-skin");if(k&&k!=="asil")document.documentElement.dataset.skin=k}catch(e){}</script>
 <link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/svg+xml" href="icons/logo.svg">
 <link rel="icon" type="image/png" href="icons/icon-192.png">
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -62,7 +63,7 @@ header{background:var(--deep);color:var(--hd-ink);position:relative;overflow:hid
 header .band{position:relative;z-index:1}
 .top{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
 .brand{display:flex;align-items:center;gap:12px}
-.brand svg{width:44px;height:44px;flex:none}
+.brand svg{width:52px;height:52px;flex:none;filter:drop-shadow(0 2px 6px rgba(0,0,0,.25))}
 .brand b{font-family:var(--f-head);font-size:19px}
 nav{display:flex;gap:6px;flex-wrap:wrap}
 nav a{color:var(--hd-ink);text-decoration:none;padding:8px 14px;border-radius:10px;min-height:40px;display:inline-flex;align-items:center;font-size:15px}
@@ -212,13 +213,13 @@ table.perm td:first-child{text-align:start}
 .staff li{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:8px 0;border-top:1px solid var(--line)}
 .staff{list-style:none;margin:0 0 12px;padding:0}
 footer a{color:inherit}
-footer{display:flex;flex-wrap:wrap;gap:10px 18px;align-items:center;justify-content:space-between;color:var(--mute);font-size:14px;border-top:1px solid var(--line)}
+footer{display:flex;flex-direction:column;gap:10px;align-items:center;text-align:center;color:var(--mute);font-size:14px;border-top:1px solid var(--line)}
 footer .credit{font-family:var(--f-head);color:var(--gold2);font-weight:700;font-size:15px}
-.skins{display:flex;gap:6px;align-items:center}
-.skins button{display:inline-flex;align-items:center;gap:6px;min-height:36px;padding:4px 10px;border-radius:99px;border:1px solid var(--line);background:var(--card);cursor:pointer;font-size:13px}
+.skins{display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-top:10px;font-size:13px;color:var(--hd-sub)}
+.skins button{display:inline-flex;align-items:center;gap:6px;min-height:36px;padding:4px 10px;border-radius:99px;border:1px solid rgba(255,255,255,.22);background:rgba(255,255,255,.08);color:var(--hd-ink);cursor:pointer;font-size:13px}
 .skins button[aria-pressed=true]{border-color:var(--gold);box-shadow:0 0 0 2px var(--gold) inset}
 .skins i{width:16px;height:16px;border-radius:50%;flex:none;border:2px solid}
-.foot-main{flex:1 1 320px}
+.foot-main{max-width:70ch}
 </style>
 </head>
 <body>
@@ -234,7 +235,7 @@ footer .credit{font-family:var(--f-head);color:var(--gold2);font-weight:700;font
  <svg class="pattern" aria-hidden="true"><rect width="100%" height="100%" fill="url(#pat)"/></svg>
  <div class="band wrap">
   <div class="top">
-   <div class="brand"><svg viewBox="-50 -50 100 100" style="color:var(--gold)"><use href="#rub" x="-50" y="-50" width="100" height="100"/></svg><b>مراجعة التفسير</b></div>
+   <div class="brand"><svg class="logo" viewBox="56 56 400 400" aria-hidden="true"><g transform="translate(256 256) scale(1) translate(-256 -256)"><rect x="130" y="130" width="252" height="252" rx="6" style="fill:var(--deep2)" fill-opacity=".4" transform="rotate(0 256 256)"/><rect x="130" y="130" width="252" height="252" rx="6" style="fill:var(--deep2)" fill-opacity=".4" transform="rotate(45 256 256)"/><rect x="130" y="130" width="252" height="252" rx="6" fill="none" style="stroke:var(--gold)" stroke-width="11" stroke-linejoin="round" transform="rotate(0 256 256)"/><rect x="130" y="130" width="252" height="252" rx="6" fill="none" style="stroke:var(--gold)" stroke-width="11" stroke-linejoin="round" transform="rotate(45 256 256)"/><circle cx="256" cy="256" r="150" fill="none" style="stroke:var(--gold3)" stroke-width="3" stroke-dasharray="2 9" stroke-linecap="round" opacity=".8"/><g style="stroke:var(--gold)" stroke-width="17" stroke-linecap="round"><line x1="200" y1="276" x2="306" y2="352"/><line x1="312" y1="276" x2="206" y2="352"/></g><g style="stroke:var(--gold)" stroke-width="12" stroke-linecap="round"><line x1="190" y1="356" x2="222" y2="356"/><line x1="290" y1="356" x2="322" y2="356"/></g><path style="fill:var(--star-ink);stroke:var(--gold)" d="M256 214 C226 196 186 192 150 200 L150 292 C186 284 226 288 256 306 Z" stroke-width="7" stroke-linejoin="round"/><path style="fill:var(--star-ink);stroke:var(--gold)" d="M256 214 C286 196 326 192 362 200 L362 292 C326 284 286 288 256 306 Z" stroke-width="7" stroke-linejoin="round"/><line x1="256" y1="214" x2="256" y2="306" style="stroke:var(--gold)" stroke-width="6"/><path d="M170 220 C196 214 222 216 242 224 M342 220 C316 214 290 216 270 224 M170 238 C196 232 222 234 242 242 M342 238 C316 232 290 234 270 242 M170 256 C196 250 222 252 242 260 M342 256 C316 250 290 252 270 260 M170 274 C196 268 222 270 242 278 M342 274 C316 268 290 270 270 278" fill="none" style="stroke:var(--deep)" stroke-opacity=".45" stroke-width="4" stroke-linecap="round"/><g transform="translate(256 166)"><rect x="-11" y="-11" width="22" height="22" style="fill:var(--gold3)"/><rect x="-11" y="-11" width="22" height="22" style="fill:var(--gold3)" transform="rotate(45)"/></g></g></svg><b>مراجعة التفسير</b></div>
    <nav id="nav">
     <a href="#home" data-v="home">الرئيسية</a>
     <a href="#board" data-v="board">لوحة الصدارة</a>
@@ -242,6 +243,11 @@ footer .credit{font-family:var(--f-head);color:var(--gold2);font-weight:700;font
     <a href="#admin" data-v="admin" id="navAdmin" hidden>الإدارة</a>
    </nav>
   </div>
+  <div class="skins" role="group" aria-label="مظهر الموقع"><span>المظهر:</span>
+  <button type="button" data-skin="asil"><i style="background:#0f3d3e;border-color:#c8a24a"></i>الأصيل</button>
+  <button type="button" data-skin="makhtuta"><i style="background:#f7f0e1;border-color:#6b1f24"></i>المخطوطة</button>
+  <button type="button" data-skin="layl"><i style="background:#0c1630;border-color:#5ec4c8"></i>الليل</button>
+ </div>
   <div class="hero" id="hero">
    <div>
     <h1>راجع التفسير واختبر حفظك</h1>
@@ -425,12 +431,7 @@ footer .credit{font-family:var(--f-head);color:var(--gold2);font-weight:700;font
 </main>
 <footer class="band wrap">
  <div class="foot-main">نص القرآن الكريم بالرسم العثماني من مشروع quran-json (Tanzil). أسئلة التفسير مستخرجة من ملفات يرفعها المشرفون. · <a href="#account">حسابي ودخول المشرفين</a></div>
- <div class="skins" role="group" aria-label="مظهر الموقع"><span>المظهر:</span>
-  <button type="button" data-skin="asil"><i style="background:#0f3d3e;border-color:#c8a24a"></i>الأصيل</button>
-  <button type="button" data-skin="makhtuta"><i style="background:#f7f0e1;border-color:#6b1f24"></i>المخطوطة</button>
-  <button type="button" data-skin="layl"><i style="background:#0c1630;border-color:#5ec4c8"></i>الليل</button>
- </div>
- <div class="credit" style="flex-basis:100%;text-align:center">تصميم طارق الشمري</div>
+ <div class="credit">تصميم طارق الشمري</div>
 </footer>
 <script>
 (function(){var M={asil:"#0f3d3e",makhtuta:"#6b1f24",layl:"#0c1630"};
@@ -441,10 +442,10 @@ document.querySelectorAll(".skins button").forEach(function(b){b.onclick=functio
 apply(document.documentElement.dataset.skin||"asil");})();
 </script>
 
-<script src="config.js?v=9"></script>
+<script src="config.js?v=11"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
-<script src="app.js?v=9"></script>
-<script src="plan.js?v=9"></script>
-<script src="account.js?v=9"></script>
+<script src="app.js?v=11"></script>
+<script src="plan.js?v=11"></script>
+<script src="account.js?v=11"></script>
 </body>
 </html>
